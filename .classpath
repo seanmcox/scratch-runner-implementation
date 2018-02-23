@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Scratch Runner Core"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Data"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Tokenizers"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-anim-1.9.jar" sourcepath="lib/batik-1.9-src/batik-anim/src/main"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-awt-util-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-bridge-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-codec-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-css-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-dom-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-ext-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-gvt-1.9.jar" sourcepath="lib/batik-1.9-src/batik-gvt/src/main"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-parser-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-script-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-svg-dom-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-transcoder-1.9.jar" sourcepath="lib/batik-1.9-src/batik-transcoder/src/main"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-util-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-xml-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/xml-apis-1.3.04.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/xml-apis-ext-1.3.04.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/xmlgraphics-commons-2.2.jar"/>
+	<classpathentry kind="lib" path="dist/install/felix.jar"/>
+	<classpathentry kind="lib" path="lib/JMF-2.1.1e/lib/jmf.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/xalan-2.7.2.jar"/>
+	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/serializer-2.7.2.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
