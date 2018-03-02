@@ -1,4 +1,5 @@
-/bin
+/bin/**
+/testBin/**
 **/.DS_Store
 /dist/install
 !/dist/install/felix.jar
