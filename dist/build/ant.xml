@@ -44,6 +44,6 @@
     </target>
 
 	<target name="jar_and_bundle" depends="jar">
-		<copy file="../install/scratchrunner.runtime.jar" todir="${dir.project}/dist/install/plain/bundle"/>
+		<copy file="../install/scratchrunner.runtime.jar" todir="${dir.workspace}/Scratch Runner Main/dist/install/plain/bundle"/>
 	</target>
 </project>

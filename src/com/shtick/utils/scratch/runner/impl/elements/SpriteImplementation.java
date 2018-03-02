@@ -10,6 +10,7 @@ import java.awt.Stroke;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
+import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -23,6 +24,7 @@ import javax.sound.sampled.LineListener;
 import javax.swing.SwingUtilities;
 
 import com.shtick.utils.scratch.runner.core.AbstractSpriteListener;
+import com.shtick.utils.scratch.runner.core.GraphicEffect;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
@@ -39,6 +41,7 @@ import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 import com.shtick.utils.scratch.runner.impl.ScriptTupleRunnerThread;
 import com.shtick.utils.scratch.runner.impl.ThreadTaskQueue;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
+import com.shtick.utils.scratch.runner.impl.bundle.GraphicEffectTracker;
 
 /**
  * @author sean.cox
@@ -383,6 +386,50 @@ public class SpriteImplementation implements Sprite{
 			}
 		}
 		System.err.println("WARNING: Costume name, "+name+", not found for sprite, "+objName);
+	}
+
+	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.elements.Sprite#stampSprite()
+	 */
+	@Override
+	public void stampSprite() {
+		Costume costume = getCurrentCostume();
+		BufferedImage image = costume.getImage();
+
+		// Contrary to the usual Scratch mangling of standard practices,
+		// centerX and centerY have the usual meaning of being values
+		// relative to the upper-left corner of the image, with values
+		// increasing left to right and top to bottom respectively.
+		int centerX = costume.getRotationCenterX();
+		int centerY = costume.getRotationCenterY();
+		
+		Graphics2D g2 = ScratchRuntimeImplementation.getScratchRuntime().getPenLayerGraphics();
+		g2.translate(getScratchX(), -getScratchY());
+		g2.scale(getScale(), getScale());
+		switch(getRotationStyle()) {
+		case "normal":
+			g2.rotate((getDirection()-90)*Math.PI/180);
+			break;
+		case "leftRight":
+			if(getDirection()<0)
+				g2.scale(-1.0, 1.0);
+			break;
+		default:
+			break;
+		}
+		synchronized(LOCK) {
+			GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
+			for(String name:effectValues.keySet()) {
+				GraphicEffect effect = tracker.getGraphicEffect(name);
+				if(effect==null) {
+					System.err.println("WARNING: Effect not found: "+name);
+					continue;
+				}
+				image = effect.getAffectedImage(image, effectValues.get(name));
+			}
+		}
+		g2.drawImage(image, -centerX, -centerY, null);
+		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 	}
 
 	/* (non-Javadoc)
@@ -1061,6 +1108,7 @@ public class SpriteImplementation implements Sprite{
 		cloneOf.clones.remove(this);
 		ScratchRuntimeImplementation.getScratchRuntime().deleteClone(this);
 		stopThreads();
+		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 	}
 
 	/**

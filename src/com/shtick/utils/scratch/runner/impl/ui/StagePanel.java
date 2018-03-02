@@ -3,6 +3,7 @@
  */
 package com.shtick.utils.scratch.runner.impl.ui;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -39,7 +40,6 @@ import com.shtick.utils.scratch.runner.impl.elements.StageMonitorImplementation;
 public class StagePanel extends JPanel {
 	private static Object LAYER_LOCK = new Object();
 	private BufferedImage penLayer;
-	private Graphics2D penLayerGraphics;
 	private HashMap<RenderableChild,Component> renderableChildComponents;
 
 	/**
@@ -151,8 +151,8 @@ public class StagePanel extends JPanel {
 					// centerX and centerY have the usual meaning of being values
 					// relative to the upper-left corner of the image, with values
 					// increasing left to right and top to bottom respectively.
-					long centerX = costume.getRotationCenterX();
-					long centerY = costume.getRotationCenterY();
+					int centerX = costume.getRotationCenterX();
+					int centerY = costume.getRotationCenterY();
 					
 					Graphics2D g2 = (Graphics2D)g2Scratch.create();
 					g2.translate(sprite.getScratchX(), -sprite.getScratchY());
@@ -178,7 +178,7 @@ public class StagePanel extends JPanel {
 						}
 						image = effect.getAffectedImage(image, effects.get(name));
 					}
-					g2.drawImage(image, (int)-centerX, (int)-centerY, null);
+					g2.drawImage(image, -centerX, -centerY, null);
 					
 				}
 			}
@@ -237,8 +237,6 @@ public class StagePanel extends JPanel {
 		synchronized(LAYER_LOCK) {
 			ScratchRuntimeImplementation runtime = ScratchRuntimeImplementation.getScratchRuntime();
 			penLayer = new BufferedImage(runtime.getStageWidth(),runtime.getStageHeight(), java.awt.Transparency.TRANSLUCENT);
-			penLayerGraphics = (Graphics2D)penLayer.getGraphics();
-			penLayerGraphics.translate(runtime.getStageWidth()/2,runtime.getStageHeight()/2);
 		}
 	}
 	

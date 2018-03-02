@@ -90,11 +90,9 @@ import org.w3c.dom.svg.SVGDocument;
 import com.shtick.util.tokenizers.json.NumberToken;
 import com.shtick.utils.data.json.JSONDecoder;
 import com.shtick.utils.data.json.JSONNumberDecoder;
-import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
-import com.shtick.utils.scratch.runner.core.OpcodeValue;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.Opcode.DataType;
@@ -854,10 +852,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	    }
 	}
 
-	/* (non-Javadoc)
-	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntime#getPenLayerGraphics()
+	/**
+	 * 
+	 * @return A Graphics2D object that will let you paint on the background using a coordinate system similar to scratch's, but with the y-axis reversed. (ie. centered on the middle, with x increasing to the right and y increasing to the bottom. The width and the height are the stage width and height.)
 	 */
-	@Override
 	public Graphics2D getPenLayerGraphics() {
 		JPanel panel = frameStack.peek();
 		if(panel instanceof StagePanel)
