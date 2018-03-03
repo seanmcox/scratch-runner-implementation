@@ -237,6 +237,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			}
 		}
 		mainWindow.setSize(frameWidth, frameHeight);
+		mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainWindow.setVisible(true);
 		
 		mainWindow.addMouseMotionListener(new MouseMotionListener() {
