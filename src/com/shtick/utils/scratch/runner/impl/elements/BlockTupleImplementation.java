@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
-import com.shtick.utils.scratch.runner.core.elements.List;
 
 /**
  * @author sean.cox
@@ -44,7 +43,11 @@ public class BlockTupleImplementation implements BlockTuple{
 	public Object[] toArray() {
 		Object[] retval = new Object[arguments.size()+1];
 		retval[0] = opcode;
-		System.arraycopy(arguments, 0, retval, 1, arguments.size());
+		int i=1;
+		for(Object argument:arguments) {
+			retval[i] = argument;
+			i++;
+		}
 		return retval;
 	}
 }
