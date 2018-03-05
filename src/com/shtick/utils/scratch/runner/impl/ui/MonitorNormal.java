@@ -43,9 +43,12 @@ public class MonitorNormal extends MonitorComponent{
 		label.setForeground(Color.BLACK);
 		add(label);
 		add(new MonitorValueComponent(monitor.getCmd(), monitor.getParam(), monitor.getTarget(), new Color(monitor.getColor()), FONT_NORMAL, getFontMetricsNormal()));
+		setDoubleBuffered(false);
 
+		setVisible(true);
 		Dimension preferredSize = getPreferredSize();
 		setBounds(monitor.getX(),monitor.getY(), preferredSize.width, preferredSize.height);
+		doLayout();
 	}
 
 	/* (non-Javadoc)

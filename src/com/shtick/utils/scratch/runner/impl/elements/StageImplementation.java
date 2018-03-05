@@ -17,7 +17,6 @@ import com.shtick.utils.scratch.runner.core.StageListener;
 import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
-import com.shtick.utils.scratch.runner.core.elements.ScriptTuple;
 import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.core.elements.Stage;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;

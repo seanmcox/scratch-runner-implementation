@@ -68,7 +68,6 @@ public class StagePanel extends JPanel {
 				
 				if(component!=null) {
 					renderableChildComponents.put(stageMonitor,component);
-					add(component);
 				}
 				continue;
 			}

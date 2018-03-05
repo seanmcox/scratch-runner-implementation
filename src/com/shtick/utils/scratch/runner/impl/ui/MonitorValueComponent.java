@@ -57,6 +57,7 @@ public class MonitorValueComponent extends JComponent{
 		this.fontMetrics = fontMetrics;
 		fontHeight = fontMetrics.getHeight();
 		context = ScratchRuntimeImplementation.getScratchRuntime().getScriptContextByName(target);
+		setDoubleBuffered(false);
 
 		setPreferredSize(new Dimension(50,fontHeight+VERTICAL_PAD*2));
 		StageMonitorCommand monitorCommand = Activator.STAGE_MONITOR_COMMAND_TRACKER.getCommand(command);
