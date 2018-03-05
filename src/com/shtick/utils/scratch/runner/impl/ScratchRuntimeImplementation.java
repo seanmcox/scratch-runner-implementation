@@ -383,7 +383,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	public ScriptTupleRunner startScript(ScriptTuple script, boolean isAtomic) {
 		final ScriptTupleRunner[] retval = new ScriptTupleRunner[1];
 		Runnable runnable = ()->{
-			ScriptTupleRunnerThread thread = stage.createRunner(script, isAtomic);
+			ScriptTupleRunnerThread thread = stage.createRunner((ScriptTupleImplementation)script, isAtomic);
 			if(thread!=null)
 				thread.start();
 			retval[0] = thread.getScriptTupleRunner();

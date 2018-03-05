@@ -32,15 +32,14 @@ import com.shtick.utils.scratch.runner.core.elements.control.SetLocalVarBlockTup
 import com.shtick.utils.scratch.runner.core.elements.control.TestBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.TrueJumpBlockTuple;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
+import com.shtick.utils.scratch.runner.impl.elements.ScriptTupleImplementation;
 
 /**
  * @author sean.cox
  *
  */
 public class ScriptTupleRunnerThread extends Thread {
-	private static final HashMap<ScriptTuple,BlockTuple[]> resolvedScripts = new HashMap<>();
-	private static final HashMap<ScriptTuple,Integer> resolvedScriptLocalVariableCounts = new HashMap<>();
-	private ScriptTuple scriptTuple;
+	private ScriptTupleImplementation scriptTuple;
 	private boolean stop = false;
 	private int instructionDelayMillis;
 	private boolean isAtomic=false;
@@ -54,7 +53,7 @@ public class ScriptTupleRunnerThread extends Thread {
 	 * @param instructionDelayMillis 
 	 * @param isAtomic 
 	 */
-	public ScriptTupleRunnerThread(ThreadGroup threadGroup, ScriptTuple scriptTuple, int instructionDelayMillis, boolean isAtomic) {
+	public ScriptTupleRunnerThread(ThreadGroup threadGroup, ScriptTupleImplementation scriptTuple, int instructionDelayMillis, boolean isAtomic) {
 		super(threadGroup,"ScriptTupleRunner");
 		this.scriptTuple = scriptTuple;
 		this.instructionDelayMillis = instructionDelayMillis;
@@ -76,25 +75,8 @@ public class ScriptTupleRunnerThread extends Thread {
 		}
 		catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
 		try {
-			synchronized(scriptTuple) {
-				if(!resolvedScripts.containsKey(scriptTuple)) {
-					resolveScript(scriptTuple);
-					// TODO Create a mechanism to purge obsolete scripts, or, better yet, to resolve duplicates so that they don't need to be resolved for each clone. 
-				}
-			}
-			try {
-				// TODO For some reason I'm getting a situation where only the script or the variable count is defined. Not sure how that could happen. The problem is intermittent.
-				localVariables = new Object[resolvedScriptLocalVariableCounts.get(scriptTuple)];
-				runBlockTuples(scriptTuple.getContext(), resolvedScripts.get(scriptTuple));
-			}
-			catch(NullPointerException t) {
-				System.out.println(scriptTuple.getContext().getObjName());
-				System.out.println(scriptTuple.getBlockTuple(0).getOpcode());
-				System.out.println(resolvedScriptLocalVariableCounts.get(scriptTuple));
-				System.out.println(resolvedScripts.get(scriptTuple));
-				System.out.flush();
-				throw t;
-			}
+			localVariables = new Object[scriptTuple.getLocalVariableCount()];
+			runBlockTuples(scriptTuple.getContext(), scriptTuple.getResolvedBlockTuples());
 		}
 		catch(InvalidScriptDefinitionException t) {
 			throw new RuntimeException(t);
@@ -124,96 +106,6 @@ public class ScriptTupleRunnerThread extends Thread {
 		return isAtomic;
 	}
 	
-	private void resolveScript(ScriptTuple scriptTuple) throws InvalidScriptDefinitionException {
-		LinkedList<BlockTuple> resolvedScript = new LinkedList<>();
-		int largestLocalVariableIndex = resolveScript(scriptTuple.getBlockTuples(),resolvedScript,0,0);
-		resolvedScripts.put(scriptTuple, resolvedScript.toArray(new BlockTuple[resolvedScript.size()]));
-		resolvedScriptLocalVariableCounts.put(scriptTuple, largestLocalVariableIndex+1);
-	}
-
-	/**
-	 * @param blockTuples
-	 * @param resolvedScript
-	 * @param startIndex
-	 * @param firstAvailableLocalVar The next thread-local variable index available to this block of code.
-	 * @return The index of the largest local variable used. (firstAvailableLocalVar-1 if no local variables were used.)
-	 * @throws InvalidScriptDefinitionException
-	 */
-	private int resolveScript(java.util.List<BlockTuple> blockTuples, LinkedList<BlockTuple> resolvedScript, int startIndex, int firstAvailableLocalVar) throws InvalidScriptDefinitionException {
-		// TODO Do some type safety checking.
-		LinkedList<JumpBlockTuple> jumpBlockTuples = new LinkedList<>();
-		HashMap<Integer,Integer> localVariableMap = new HashMap<>();
-		
-		// Adjust local variable indexes and return the largest index
-		int largestRemappedLocalVar = firstAvailableLocalVar-1;
-		for(BlockTuple blockTuple:blockTuples) {
-			if(blockTuple instanceof LocalVarBlockTuple) {
-				int varIndex = ((LocalVarBlockTuple)blockTuple).getLocalVarIdentifier();
-				if(!localVariableMap.containsKey(varIndex)) {
-					largestRemappedLocalVar++;
-					localVariableMap.put(varIndex, largestRemappedLocalVar);
-				}
-				((LocalVarBlockTuple)blockTuple).setLocalVarIdentifier(localVariableMap.get(varIndex));
-			}
-		}
-		int largestRemappedLocalVarIncludingChildren = largestRemappedLocalVar;
-
-		// Make note of all jumps in order to facilitate index adjustments.
-		for(BlockTuple blockTuple:blockTuples) {
-			if(blockTuple instanceof JumpBlockTuple)
-				jumpBlockTuples.add((JumpBlockTuple)blockTuple);
-		}
-		// Make initial start index adjustment
-		for(JumpBlockTuple jumpBlockTuple:jumpBlockTuples)
-			jumpBlockTuple.setIndex(jumpBlockTuple.getIndex()+startIndex);
-		
-		int i = startIndex;
-		// Process block tuples, inflating control blocks.
-		for(BlockTuple blockTuple:blockTuples) {
-			String opcode = blockTuple.getOpcode();
-			Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
-			if(opcodeImplementation instanceof OpcodeControl) {
-				BlockTuple[] resolvedControl = ((OpcodeControl)opcodeImplementation).execute(blockTuple.getArguments());
-				largestRemappedLocalVarIncludingChildren = Math.max(
-						largestRemappedLocalVarIncludingChildren,
-						resolveScript(Arrays.asList(resolvedControl),resolvedScript,i, largestRemappedLocalVar+1)
-				);
-				int adjustment = resolvedScript.size()-i-1;
-				// Adjust jumps to points after this block inflation.
-				for(JumpBlockTuple jumpBlockTuple:jumpBlockTuples) {
-					if(jumpBlockTuple.getIndex()>i) {
-						jumpBlockTuple.setIndex(jumpBlockTuple.getIndex()+adjustment);
-					}
-				}
-				i=resolvedScript.size();
-			}
-			else if(opcodeImplementation instanceof OpcodeHat) {
-				if(i==0)
-					continue;
-				throw new InvalidScriptDefinitionException("OpcodeHat found in the middle of a script.");
-			}
-			else if(blockTuple instanceof ControlBlockTuple) {
-				// There is not implementation to check against.
-				resolvedScript.add(blockTuple);
-				i++;
-			}
-			else {
-				if(opcodeImplementation == null)
-					throw new InvalidScriptDefinitionException("Unrecognized opcode: "+opcode);
-				if(opcodeImplementation instanceof OpcodeValue)
-					throw new InvalidScriptDefinitionException("Attempted to execute value opcode: "+opcode);
-				DataType[] types = opcodeImplementation.getArgumentTypes();
-				java.util.List<Object> arguments = blockTuple.getArguments();
-				if(types.length!=arguments.size())
-					if(!((types.length-1<=arguments.size())&&(types[types.length-1]==Opcode.DataType.OBJECTS)))
-						throw new InvalidScriptDefinitionException("Invalid arguments found for opcode, "+opcode);
-				resolvedScript.add(blockTuple);
-				i++;
-			}
-		}
-		return largestRemappedLocalVarIncludingChildren;
-	}
-
 	/**
 	 * 
 	 * @param context

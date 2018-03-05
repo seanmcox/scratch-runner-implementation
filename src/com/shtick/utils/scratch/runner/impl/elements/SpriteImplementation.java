@@ -1009,7 +1009,7 @@ public class SpriteImplementation implements Sprite{
 				// Set clone scripts.
 				for(ScriptTupleImplementation script:scripts) {
 					BlockTuple[] blockTuples = script.getBlockTuples().toArray(new BlockTuple[script.getBlockTupleCount()]);
-					ScriptTupleImplementation scriptTupleImplementation = new ScriptTupleImplementation(clone, blockTuples);
+					ScriptTupleImplementation scriptTupleImplementation = (ScriptTupleImplementation)script.clone(clone);
 					clone.addScript(scriptTupleImplementation);
 					if(blockTuples.length>0) {
 						BlockTuple maybeHat = blockTuples[0];

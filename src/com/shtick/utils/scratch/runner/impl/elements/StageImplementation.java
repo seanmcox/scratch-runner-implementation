@@ -507,7 +507,7 @@ public class StageImplementation implements Stage{
 	 * @param isAtomic 
 	 * @return A ScriptTupleRunner for the given script, or null, if the app has been stopped.
 	 */
-	public ScriptTupleRunnerThread createRunner(ScriptTuple script, boolean isAtomic) {
+	public ScriptTupleRunnerThread createRunner(ScriptTupleImplementation script, boolean isAtomic) {
 		synchronized(script.getContext().getThreadGroup()) {
 			if(stopAll)
 				return null;

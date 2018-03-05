@@ -5,18 +5,30 @@ package com.shtick.utils.scratch.runner.impl.elements;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
 
+import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
+import com.shtick.utils.scratch.runner.core.Opcode;
+import com.shtick.utils.scratch.runner.core.OpcodeControl;
+import com.shtick.utils.scratch.runner.core.OpcodeHat;
+import com.shtick.utils.scratch.runner.core.OpcodeValue;
+import com.shtick.utils.scratch.runner.core.Opcode.DataType;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 import com.shtick.utils.scratch.runner.core.elements.ScriptTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.ControlBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.JumpBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.LocalVarBlockTuple;
+import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 
 /**
  * @author sean.cox
  *
  */
 public class ScriptTupleImplementation implements ScriptTuple {
-	private BlockTuple[] blockTuples;
 	private ScriptContext context;
+	private CloneableData cloneableData;
 
 	/**
 	 * @param context 
@@ -25,22 +37,151 @@ public class ScriptTupleImplementation implements ScriptTuple {
 	public ScriptTupleImplementation(ScriptContext context, BlockTuple[] blockTuples) {
 		super();
 		this.context = context;
-		this.blockTuples = blockTuples;
+		this.cloneableData = new CloneableData();
+		this.cloneableData.blockTuples = blockTuples;
+	}
+	
+	private ScriptTupleImplementation(ScriptContext context, CloneableData cloneableData) {
+		this.context = context;
+		this.cloneableData = cloneableData;
+	}
+
+	@Override
+	public ScriptTuple clone(ScriptContext context) {
+		return new ScriptTupleImplementation(context,cloneableData);
+	}
+	
+	/**
+	 * 
+	 * @return A representation of the script in which all control opcodes have been resolved.
+	 * @throws InvalidScriptDefinitionException
+	 */
+	public BlockTuple[] getResolvedBlockTuples() throws InvalidScriptDefinitionException{
+		synchronized(cloneableData) {
+			if(cloneableData.resolvedBlockTuples == null) {
+				resolveScript();
+			}
+		}
+		return cloneableData.resolvedBlockTuples;
+	}
+
+	/**
+	 * 
+	 * @return The number of local variables needed to run the resolved script.
+	 * @throws InvalidScriptDefinitionException
+	 */
+	public int getLocalVariableCount() throws InvalidScriptDefinitionException {
+		synchronized(cloneableData) {
+			if(cloneableData.resolvedBlockTuples == null) {
+				resolveScript();
+			}
+		}
+		return cloneableData.localVariableCount;
+	}
+
+	private void resolveScript() throws InvalidScriptDefinitionException {
+		LinkedList<BlockTuple> resolvedScript = new LinkedList<>();
+		int largestLocalVariableIndex = resolveScript(Arrays.asList(cloneableData.blockTuples),resolvedScript,0,0);
+		cloneableData.resolvedBlockTuples = resolvedScript.toArray(new BlockTuple[resolvedScript.size()]);
+		cloneableData.localVariableCount = largestLocalVariableIndex+1;
+	}
+
+	/**
+	 * @param blockTuples
+	 * @param resolvedScript
+	 * @param startIndex
+	 * @param firstAvailableLocalVar The next thread-local variable index available to this block of code.
+	 * @return The index of the largest local variable used. (firstAvailableLocalVar-1 if no local variables were used.)
+	 * @throws InvalidScriptDefinitionException
+	 */
+	private int resolveScript(java.util.List<BlockTuple> blockTuples, LinkedList<BlockTuple> resolvedScript, int startIndex, int firstAvailableLocalVar) throws InvalidScriptDefinitionException {
+		// TODO Do some type safety checking.
+		LinkedList<JumpBlockTuple> jumpBlockTuples = new LinkedList<>();
+		HashMap<Integer,Integer> localVariableMap = new HashMap<>();
+		
+		// Adjust local variable indexes and return the largest index
+		int largestRemappedLocalVar = firstAvailableLocalVar-1;
+		for(BlockTuple blockTuple:blockTuples) {
+			if(blockTuple instanceof LocalVarBlockTuple) {
+				int varIndex = ((LocalVarBlockTuple)blockTuple).getLocalVarIdentifier();
+				if(!localVariableMap.containsKey(varIndex)) {
+					largestRemappedLocalVar++;
+					localVariableMap.put(varIndex, largestRemappedLocalVar);
+				}
+				((LocalVarBlockTuple)blockTuple).setLocalVarIdentifier(localVariableMap.get(varIndex));
+			}
+		}
+		int largestRemappedLocalVarIncludingChildren = largestRemappedLocalVar;
+
+		// Make note of all jumps in order to facilitate index adjustments.
+		for(BlockTuple blockTuple:blockTuples) {
+			if(blockTuple instanceof JumpBlockTuple)
+				jumpBlockTuples.add((JumpBlockTuple)blockTuple);
+		}
+		// Make initial start index adjustment
+		for(JumpBlockTuple jumpBlockTuple:jumpBlockTuples)
+			jumpBlockTuple.setIndex(jumpBlockTuple.getIndex()+startIndex);
+		
+		int i = startIndex;
+		// Process block tuples, inflating control blocks.
+		for(BlockTuple blockTuple:blockTuples) {
+			String opcode = blockTuple.getOpcode();
+			Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+			if(opcodeImplementation instanceof OpcodeControl) {
+				BlockTuple[] resolvedControl = ((OpcodeControl)opcodeImplementation).execute(blockTuple.getArguments());
+				largestRemappedLocalVarIncludingChildren = Math.max(
+						largestRemappedLocalVarIncludingChildren,
+						resolveScript(Arrays.asList(resolvedControl),resolvedScript,i, largestRemappedLocalVar+1)
+				);
+				int adjustment = resolvedScript.size()-i-1;
+				// Adjust jumps to points after this block inflation.
+				for(JumpBlockTuple jumpBlockTuple:jumpBlockTuples) {
+					if(jumpBlockTuple.getIndex()>i) {
+						jumpBlockTuple.setIndex(jumpBlockTuple.getIndex()+adjustment);
+					}
+				}
+				i=resolvedScript.size();
+			}
+			else if(opcodeImplementation instanceof OpcodeHat) {
+				if(i==0)
+					continue;
+				throw new InvalidScriptDefinitionException("OpcodeHat found in the middle of a script.");
+			}
+			else if(blockTuple instanceof ControlBlockTuple) {
+				// There is not implementation to check against.
+				resolvedScript.add(blockTuple);
+				i++;
+			}
+			else {
+				if(opcodeImplementation == null)
+					throw new InvalidScriptDefinitionException("Unrecognized opcode: "+opcode);
+				if(opcodeImplementation instanceof OpcodeValue)
+					throw new InvalidScriptDefinitionException("Attempted to execute value opcode: "+opcode);
+				DataType[] types = opcodeImplementation.getArgumentTypes();
+				java.util.List<Object> arguments = blockTuple.getArguments();
+				if(types.length!=arguments.size())
+					if(!((types.length-1<=arguments.size())&&(types[types.length-1]==Opcode.DataType.OBJECTS)))
+						throw new InvalidScriptDefinitionException("Invalid arguments found for opcode, "+opcode);
+				resolvedScript.add(blockTuple);
+				i++;
+			}
+		}
+		return largestRemappedLocalVarIncludingChildren;
 	}
 
 	@Override
 	public java.util.List<BlockTuple> getBlockTuples() {
-		return new ArrayList<>(Arrays.asList(blockTuples));
+		return new ArrayList<>(Arrays.asList(cloneableData.blockTuples));
 	}
 	
 	@Override
 	public BlockTuple getBlockTuple(int index) {
-		return blockTuples[index];
+		return cloneableData.blockTuples[index];
 	}
 	
 	@Override
 	public int getBlockTupleCount() {
-		return blockTuples.length;
+		return cloneableData.blockTuples.length;
 	}
 
 	@Override
@@ -53,6 +194,12 @@ public class ScriptTupleImplementation implements ScriptTuple {
 	 */
 	@Override
 	public Object[] toArray() {
-		return Arrays.copyOf(blockTuples, blockTuples.length);
+		return Arrays.copyOf(cloneableData.blockTuples, cloneableData.blockTuples.length);
+	}
+	
+	private class CloneableData {
+		private BlockTuple[] blockTuples;
+		private BlockTuple[] resolvedBlockTuples;
+		private int localVariableCount;
 	}
 }
