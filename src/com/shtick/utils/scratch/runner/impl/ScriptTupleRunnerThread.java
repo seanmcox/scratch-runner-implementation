@@ -209,7 +209,8 @@ public class ScriptTupleRunnerThread extends Thread {
 							break;
 						case OBJECTS:
 							Object[] newArguments = new Object[types.length];
-							System.arraycopy(arguments, 0, newArguments, 0, types.length-1);
+							for(int j=0;j<types.length-1;j++)
+								newArguments[j] = arguments.get(j);
 							Object[] objects = new Object[arguments.size()-types.length+1];
 							for(int j=0;j<objects.length;j++) {
 								objects[j] = getValue(context,arguments.get(i+j));

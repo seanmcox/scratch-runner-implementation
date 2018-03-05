@@ -81,9 +81,14 @@ public class ScriptTupleImplementation implements ScriptTuple {
 
 	private void resolveScript() throws InvalidScriptDefinitionException {
 		LinkedList<BlockTuple> resolvedScript = new LinkedList<>();
-		int largestLocalVariableIndex = resolveScript(Arrays.asList(cloneableData.blockTuples),resolvedScript,0,0);
-		cloneableData.resolvedBlockTuples = resolvedScript.toArray(new BlockTuple[resolvedScript.size()]);
-		cloneableData.localVariableCount = largestLocalVariableIndex+1;
+		try {
+			int largestLocalVariableIndex = resolveScript(Arrays.asList(cloneableData.blockTuples),resolvedScript,0,0);
+			cloneableData.resolvedBlockTuples = resolvedScript.toArray(new BlockTuple[resolvedScript.size()]);
+			cloneableData.localVariableCount = largestLocalVariableIndex+1;
+		}
+		catch(InvalidScriptDefinitionException t) {
+			throw new InvalidScriptDefinitionException(t.getMessage()+", hat="+cloneableData.blockTuples[0].getOpcode(),t);
+		}
 	}
 
 	/**
@@ -145,7 +150,7 @@ public class ScriptTupleImplementation implements ScriptTuple {
 			else if(opcodeImplementation instanceof OpcodeHat) {
 				if(i==0)
 					continue;
-				throw new InvalidScriptDefinitionException("OpcodeHat found in the middle of a script.");
+				throw new InvalidScriptDefinitionException("OpcodeHat found in the middle of a script. Context = "+context.getObjName());
 			}
 			else if(blockTuple instanceof ControlBlockTuple) {
 				// There is not implementation to check against.
@@ -156,12 +161,12 @@ public class ScriptTupleImplementation implements ScriptTuple {
 				if(opcodeImplementation == null)
 					throw new InvalidScriptDefinitionException("Unrecognized opcode: "+opcode);
 				if(opcodeImplementation instanceof OpcodeValue)
-					throw new InvalidScriptDefinitionException("Attempted to execute value opcode: "+opcode);
+					throw new InvalidScriptDefinitionException("Attempted to execute value opcode. Opcode = "+opcode+", Context = "+context.getObjName());
 				DataType[] types = opcodeImplementation.getArgumentTypes();
 				java.util.List<Object> arguments = blockTuple.getArguments();
 				if(types.length!=arguments.size())
 					if(!((types.length-1<=arguments.size())&&(types[types.length-1]==Opcode.DataType.OBJECTS)))
-						throw new InvalidScriptDefinitionException("Invalid arguments found for opcode, "+opcode);
+						throw new InvalidScriptDefinitionException("Invalid arguments found for opcode. Opcode = "+opcode+", Context = "+context.getObjName());
 				resolvedScript.add(blockTuple);
 				i++;
 			}

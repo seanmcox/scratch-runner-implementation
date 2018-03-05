@@ -1014,10 +1014,10 @@ public class SpriteImplementation implements Sprite{
 					if(blockTuples.length>0) {
 						BlockTuple maybeHat = blockTuples[0];
 						String opcode = maybeHat.getOpcode();
-						java.util.List<Object> arguments = maybeHat.getArguments();
 						Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
-						Object[] executableArguments = new Object[arguments.size()];
 						if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
+							java.util.List<Object> arguments = maybeHat.getArguments();
+							Object[] executableArguments = new Object[arguments.size()];
 							DataType[] types = opcodeImplementation.getArgumentTypes();
 							for(i=0;i<arguments.size();i++) {
 								switch(types[i]) {
