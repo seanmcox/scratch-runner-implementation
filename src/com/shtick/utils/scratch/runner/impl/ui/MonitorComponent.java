@@ -18,11 +18,11 @@ public abstract class MonitorComponent extends JPanel {
 	/**
 	 * 
 	 */
-	public static final Font FONT_NORMAL = new Font("sansserif", Font.BOLD, 12);
+	public static final Font FONT_NORMAL = new Font("sansserif", Font.BOLD, 11);
 	/**
 	 * 
 	 */
-	public static final Font FONT_LARGE = new Font("sansserif", Font.BOLD, 15);
+	public static final Font FONT_LARGE = new Font("sansserif", Font.BOLD, 14);
 	private static FontMetrics FONT_METRICS_NORMAL;
 	private static FontMetrics FONT_METRICS_LARGE;
 	private RenderableChild renderableChild;

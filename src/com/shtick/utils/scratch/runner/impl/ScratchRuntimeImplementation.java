@@ -184,7 +184,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			return;
 		}
 
-		start(10, new File(args[0]), 480, 360, 480, 360, false);
+		start(5, new File(args[0]), 480, 360, 480, 360, false);
 //		start(10, new File("/Users/sean.cox/Documents/Personal Workspace Oxygen/Scratch Runner/data/project.sb2"), 480, 360, 480, 360, false);
 		synchronized(this){
 			while(!EXIT){
@@ -1054,38 +1054,41 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(blockTuples.length>0) {
 			BlockTuple maybeHat = blockTuples[0];
 			String opcode = maybeHat.getOpcode();
-			Object[] arguments = maybeHat.getArguments();
+			java.util.List<Object> arguments = maybeHat.getArguments();
 			Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+			Object[] executableArguments = new Object[arguments.size()];
 			if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 				DataType[] types = opcodeImplementation.getArgumentTypes();
-				if(types.length!= arguments.length)
+				if(types.length!= arguments.size())
 					throw new IOException("Invalid arguments found for opcode, "+opcode);
-				for(i=0;i<arguments.length;i++) {
+				for(i=0;i<arguments.size();i++) {
 					switch(types[i]) {
 					case BOOLEAN:
-						if(!(arguments[i] instanceof Boolean))
+						executableArguments[i] = arguments.get(i);
+						if(!(executableArguments[i] instanceof Boolean))
 							throw new IOException("Non-tuple provided where tuple expected.");
 						break;
 					case NUMBER:
-						arguments[i] = OpcodeUtils.getNumericValue(arguments[i]);
+						executableArguments[i] = OpcodeUtils.getNumericValue(arguments.get(i));
 						break;
 					case OBJECT:
-						if(!((arguments[i] instanceof Boolean)||(arguments[i] instanceof Number)||(arguments[i] instanceof String)))
+						executableArguments[i] = arguments.get(i);
+						if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
 							throw new IOException("Non-object provided where object expected.");
 						break;
 					case STRING:
-						arguments[i] = OpcodeUtils.getStringValue(arguments[i]);
+						executableArguments[i] = OpcodeUtils.getStringValue(arguments.get(i));
 						break;
 					case TUPLE:
-						if(!(arguments[i] instanceof Tuple))
+						if(!(arguments.get(i) instanceof Tuple))
 							throw new IOException("Non-tuple provided where tuple expected.");
-						arguments[i] = ((Tuple)arguments[i]).toArray();
+						executableArguments[i] = ((Tuple)arguments.get(i)).toArray();
 						break;
 					default:
 						throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
 					}
 				}
-				((OpcodeHat)opcodeImplementation).registerListeningScript(retval, arguments);
+				((OpcodeHat)opcodeImplementation).registerListeningScript(retval, executableArguments);
 			}
 			else {
 				// TODO Why bother remembering the script?
@@ -1135,7 +1138,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		}
 		
 		if(opcode!=null) {
-			return new BlockTupleImplementation(opcode, args);
+			ArrayList<Object> listArgs = new ArrayList<>(args.length);
+			for(Object arg:args)
+				listArgs.add(arg);
+			return new BlockTupleImplementation(opcode, listArgs);
 		}
 		return new TupleImplementation(args);
 	}

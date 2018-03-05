@@ -3,11 +3,9 @@
  */
 package com.shtick.utils.scratch.runner.impl.ui;
 
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.geom.Area;
 import java.awt.image.BufferedImage;
@@ -113,7 +111,7 @@ public class StagePanel extends JPanel {
 		
 		{
 			Stage stage = runtime.getCurrentStage();
-			Image image = stage.getCurrentCostume().getImage();
+			BufferedImage image = stage.getCurrentCostume().getImage();
 			int imageWidth = image.getWidth(null);
 			int imageHeight = image.getHeight(null);
 			
@@ -154,6 +152,7 @@ public class StagePanel extends JPanel {
 					int centerX = costume.getRotationCenterX();
 					int centerY = costume.getRotationCenterY();
 					
+					// TODO Scale the image using a smoother algorithm rather than scaling the Graphics2D. (Current scaling method doesn't look good.)
 					Graphics2D g2 = (Graphics2D)g2Scratch.create();
 					g2.translate(sprite.getScratchX(), -sprite.getScratchY());
 					g2.scale(sprite.getScale()/costume.getBitmapResolution(), sprite.getScale()/costume.getBitmapResolution());

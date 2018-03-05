@@ -3,9 +3,11 @@
  */
 package com.shtick.utils.scratch.runner.impl.elements;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.List;
 
 /**
  * @author sean.cox
@@ -13,16 +15,16 @@ import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
  */
 public class BlockTupleImplementation implements BlockTuple{
 	private String opcode;
-	private Object[] arguments;
+	private java.util.List<Object> arguments;
 	
 	/**
 	 * @param opcode
 	 * @param arguments
 	 */
-	public BlockTupleImplementation(String opcode, Object[] arguments) {
+	public BlockTupleImplementation(String opcode, ArrayList<Object> arguments) {
 		super();
 		this.opcode = opcode;
-		this.arguments = arguments;
+		this.arguments = Collections.unmodifiableList(arguments);
 	}
 
 	@Override
@@ -31,8 +33,8 @@ public class BlockTupleImplementation implements BlockTuple{
 	}
 
 	@Override
-	public Object[] getArguments() {
-		return Arrays.copyOf(arguments,arguments.length);
+	public java.util.List<Object> getArguments() {
+		return arguments;
 	}
 
 	/* (non-Javadoc)
@@ -40,9 +42,9 @@ public class BlockTupleImplementation implements BlockTuple{
 	 */
 	@Override
 	public Object[] toArray() {
-		Object[] retval = new Object[arguments.length+1];
+		Object[] retval = new Object[arguments.size()+1];
 		retval[0] = opcode;
-		System.arraycopy(arguments, 0, retval, 1, arguments.length);
+		System.arraycopy(arguments, 0, retval, 1, arguments.size());
 		return retval;
 	}
 }

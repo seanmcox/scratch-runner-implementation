@@ -22,12 +22,12 @@ import com.shtick.utils.scratch.runner.impl.elements.StageMonitorImplementation;
  *
  */
 public class MonitorNormal extends MonitorComponent{
-	private static final Stroke PANEL_STROKE = new BasicStroke(1.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_MITER);
+	private static final Stroke PANEL_STROKE = new BasicStroke(1.0f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_MITER);
 	private static final Color COLOR_BACKGROUND = new Color(160, 160, 160);
+	private static final int VERTICAL_PAD = 2;
+	private static final int HORIZONTAL_PAD = 5;
 	private int labelWidth;
 	private int fontHeight;
-	private int verticalPad = 5;
-	private int horizontalPad = 5;
 
 	/**
 	 * @param monitor 
@@ -35,7 +35,7 @@ public class MonitorNormal extends MonitorComponent{
 	 */
 	public MonitorNormal(StageMonitorImplementation monitor) {
 		super(monitor);
-		setLayout(new FlowLayout(FlowLayout.LEFT,verticalPad,horizontalPad));
+		setLayout(new FlowLayout(FlowLayout.LEFT,HORIZONTAL_PAD,VERTICAL_PAD));
 		labelWidth = getFontMetricsNormal().stringWidth(monitor.getLabel());
 		fontHeight = getFontMetricsNormal().getHeight();
 		JLabel label = new JLabel(monitor.getLabel());

@@ -29,10 +29,10 @@ import com.shtick.utils.scratch.runner.impl.bundle.Activator;
  *
  */
 public class MonitorValueComponent extends JComponent{
-	private static final Stroke PANEL_STROKE = new BasicStroke(1.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_MITER);
+	private static final Stroke PANEL_STROKE = new BasicStroke(1.0f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_MITER);
+	private static final int VERTICAL_PAD = 1;
+	private static final int HORIZONTAL_PAD = 1;
 	private int fontHeight;
-	private int verticalPad = 3;
-	private int horizontalPad = 3;
 	private String command;
 	private String param;
 	private Color backgroundColor;
@@ -58,7 +58,7 @@ public class MonitorValueComponent extends JComponent{
 		fontHeight = fontMetrics.getHeight();
 		context = ScratchRuntimeImplementation.getScratchRuntime().getScriptContextByName(target);
 
-		setPreferredSize(new Dimension(50,fontHeight+verticalPad*2));
+		setPreferredSize(new Dimension(50,fontHeight+VERTICAL_PAD*2));
 		StageMonitorCommand monitorCommand = Activator.STAGE_MONITOR_COMMAND_TRACKER.getCommand(command);
 		if(monitorCommand==null)
 			System.err.println("StageMonitorCommand not found: "+command);
@@ -112,7 +112,7 @@ public class MonitorValueComponent extends JComponent{
 		else
 			text = commandImpl.execute(ScratchRuntimeImplementation.getScratchRuntime(), context, param);
 		int labelWidth = fontMetrics.stringWidth(text);
-		g2.drawString(text, (getWidth()-labelWidth)/2, verticalPad+fontMetrics.getAscent());
+		g2.drawString(text, (getWidth()-labelWidth)/2, VERTICAL_PAD+fontMetrics.getAscent());
 		
 		paintChildren(g);
 	}

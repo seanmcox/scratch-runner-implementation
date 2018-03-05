@@ -1014,30 +1014,33 @@ public class SpriteImplementation implements Sprite{
 					if(blockTuples.length>0) {
 						BlockTuple maybeHat = blockTuples[0];
 						String opcode = maybeHat.getOpcode();
-						Object[] arguments = maybeHat.getArguments();
+						java.util.List<Object> arguments = maybeHat.getArguments();
 						Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+						Object[] executableArguments = new Object[arguments.size()];
 						if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 							DataType[] types = opcodeImplementation.getArgumentTypes();
-							for(i=0;i<arguments.length;i++) {
+							for(i=0;i<arguments.size();i++) {
 								switch(types[i]) {
 								case BOOLEAN:
+									executableArguments[i] = arguments.get(i);
 									break;
 								case NUMBER:
-									arguments[i] = OpcodeUtils.getNumericValue(arguments[i]);
+									executableArguments[i] = OpcodeUtils.getNumericValue(arguments.get(i));
 									break;
 								case OBJECT:
+									executableArguments[i] = arguments.get(i);
 									break;
 								case STRING:
-									arguments[i] = OpcodeUtils.getStringValue(arguments[i]);
+									executableArguments[i] = OpcodeUtils.getStringValue(arguments.get(i));
 									break;
 								case TUPLE:
-									arguments[i] = ((Tuple)arguments[i]).toArray();
+									executableArguments[i] = ((Tuple)arguments.get(i)).toArray();
 									break;
 								default:
 									throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
 								}
 							}
-							((OpcodeHat)opcodeImplementation).registerListeningScript(scriptTupleImplementation, arguments);
+							((OpcodeHat)opcodeImplementation).registerListeningScript(scriptTupleImplementation, executableArguments);
 						}
 					}
 				}
@@ -1098,10 +1101,10 @@ public class SpriteImplementation implements Sprite{
 				if(blockTuples.length>0) {
 					BlockTuple maybeHat = blockTuples[0];
 					String opcode = maybeHat.getOpcode();
-					Object[] arguments = maybeHat.getArguments();
+					java.util.List<Object> arguments = maybeHat.getArguments();
 					Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
 					if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat))
-						((OpcodeHat)opcodeImplementation).unregisterListeningScript(script, arguments);
+						((OpcodeHat)opcodeImplementation).unregisterListeningScript(script, arguments.toArray(new Object[arguments.size()]));
 				}
 			}
 		}

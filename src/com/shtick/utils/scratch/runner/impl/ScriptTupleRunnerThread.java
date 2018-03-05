@@ -76,11 +76,25 @@ public class ScriptTupleRunnerThread extends Thread {
 		}
 		catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
 		try {
-			if(!resolvedScripts.containsKey(scriptTuple)) {
-				resolveScript(scriptTuple);
+			synchronized(scriptTuple) {
+				if(!resolvedScripts.containsKey(scriptTuple)) {
+					resolveScript(scriptTuple);
+					// TODO Create a mechanism to purge obsolete scripts, or, better yet, to resolve duplicates so that they don't need to be resolved for each clone. 
+				}
 			}
-			localVariables = new Object[resolvedScriptLocalVariableCounts.get(scriptTuple)];
-			runBlockTuples(scriptTuple.getContext(), resolvedScripts.get(scriptTuple));
+			try {
+				// TODO For some reason I'm getting a situation where only the script or the variable count is defined. Not sure how that could happen. The problem is intermittent.
+				localVariables = new Object[resolvedScriptLocalVariableCounts.get(scriptTuple)];
+				runBlockTuples(scriptTuple.getContext(), resolvedScripts.get(scriptTuple));
+			}
+			catch(NullPointerException t) {
+				System.out.println(scriptTuple.getContext().getObjName());
+				System.out.println(scriptTuple.getBlockTuple(0).getOpcode());
+				System.out.println(resolvedScriptLocalVariableCounts.get(scriptTuple));
+				System.out.println(resolvedScripts.get(scriptTuple));
+				System.out.flush();
+				throw t;
+			}
 		}
 		catch(InvalidScriptDefinitionException t) {
 			throw new RuntimeException(t);
@@ -160,25 +174,42 @@ public class ScriptTupleRunnerThread extends Thread {
 			Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
 			if(opcodeImplementation instanceof OpcodeControl) {
 				BlockTuple[] resolvedControl = ((OpcodeControl)opcodeImplementation).execute(blockTuple.getArguments());
-				largestRemappedLocalVarIncludingChildren = Math.max(largestRemappedLocalVarIncludingChildren, resolveScript(Arrays.asList(resolvedControl),resolvedScript,i, largestRemappedLocalVar+1));
-				int adjustment = resolvedControl.length-1;
+				largestRemappedLocalVarIncludingChildren = Math.max(
+						largestRemappedLocalVarIncludingChildren,
+						resolveScript(Arrays.asList(resolvedControl),resolvedScript,i, largestRemappedLocalVar+1)
+				);
+				int adjustment = resolvedScript.size()-i-1;
 				// Adjust jumps to points after this block inflation.
 				for(JumpBlockTuple jumpBlockTuple:jumpBlockTuples) {
 					if(jumpBlockTuple.getIndex()>i) {
 						jumpBlockTuple.setIndex(jumpBlockTuple.getIndex()+adjustment);
 					}
 				}
-				i+=adjustment;
+				i=resolvedScript.size();
 			}
 			else if(opcodeImplementation instanceof OpcodeHat) {
 				if(i==0)
 					continue;
 				throw new InvalidScriptDefinitionException("OpcodeHat found in the middle of a script.");
 			}
-			else {
+			else if(blockTuple instanceof ControlBlockTuple) {
+				// There is not implementation to check against.
 				resolvedScript.add(blockTuple);
+				i++;
 			}
-			i++;
+			else {
+				if(opcodeImplementation == null)
+					throw new InvalidScriptDefinitionException("Unrecognized opcode: "+opcode);
+				if(opcodeImplementation instanceof OpcodeValue)
+					throw new InvalidScriptDefinitionException("Attempted to execute value opcode: "+opcode);
+				DataType[] types = opcodeImplementation.getArgumentTypes();
+				java.util.List<Object> arguments = blockTuple.getArguments();
+				if(types.length!=arguments.size())
+					if(!((types.length-1<=arguments.size())&&(types[types.length-1]==Opcode.DataType.OBJECTS)))
+						throw new InvalidScriptDefinitionException("Invalid arguments found for opcode, "+opcode);
+				resolvedScript.add(blockTuple);
+				i++;
+			}
 		}
 		return largestRemappedLocalVarIncludingChildren;
 	}
@@ -194,18 +225,36 @@ public class ScriptTupleRunnerThread extends Thread {
 		int blockTupleIndex=0;
 		try {
 			while((blockTupleIndex<blockTuples.length)&&(!stop)) {
-				if((!isAtomic)&&(instructionDelayMillis>0)) {
-					try {
-						Thread.sleep(instructionDelayMillis);
-					}
-					catch(InterruptedException t) {}
-				}
 				BlockTuple tuple = blockTuples[blockTupleIndex];
 				if(tuple instanceof ControlBlockTuple) {
 					if(tuple instanceof TestBlockTuple) {
-						testResult = (Boolean)getValue(context,tuple.getArguments()[0]);
+						testResult = (Boolean)getValue(context,tuple.getArguments().get(0));
+						blockTupleIndex++;
+						continue;
 					}
-					else if(tuple instanceof BasicJumpBlockTuple) {
+					else if(tuple instanceof SetLocalVarBlockTuple) {
+						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = tuple.getArguments().get(1);
+						blockTupleIndex++;
+						continue;
+					}
+					else if(tuple instanceof ChangeLocalVarByBlockTuple) {
+						Number value = OpcodeUtils.getNumericValue(localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()]);
+						Number change = OpcodeUtils.getNumericValue(getValue(context,tuple.getArguments().get(1)));
+						if((value instanceof Double)||(value instanceof Double))
+							value = value.doubleValue()+change.doubleValue();
+						else
+							value = value.longValue()+change.longValue();
+						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = value;
+						blockTupleIndex++;
+						continue;
+					}
+					if((!isAtomic)&&(instructionDelayMillis>0)) {
+						try {
+							Thread.sleep(instructionDelayMillis);
+						}
+						catch(InterruptedException t) {}
+					}
+					if(tuple instanceof BasicJumpBlockTuple) {
 						blockTupleIndex = ((JumpBlockTuple)tuple).getIndex();
 						continue;
 					}
@@ -221,20 +270,17 @@ public class ScriptTupleRunnerThread extends Thread {
 							continue;
 						}
 					}
-					else if(tuple instanceof SetLocalVarBlockTuple) {
-						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = tuple.getArguments()[1];
-					}
-					else if(tuple instanceof ChangeLocalVarByBlockTuple) {
-						Number value = OpcodeUtils.getNumericValue(localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()]);
-						Number change = OpcodeUtils.getNumericValue(getValue(context,tuple.getArguments()[1]));
-						if((value instanceof Double)||(value instanceof Double))
-							value = value.doubleValue()+change.doubleValue();
-						else
-							value = value.longValue()+change.longValue();
-						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = value;
+					else {
+						throw new InvalidScriptDefinitionException("Unrecognized control block: "+tuple.getClass().getCanonicalName());
 					}
 					blockTupleIndex++;
 					continue;
+				}
+				if((!isAtomic)&&(instructionDelayMillis>0)) {
+					try {
+						Thread.sleep(instructionDelayMillis);
+					}
+					catch(InterruptedException t) {}
 				}
 				// TODO Move type/safety checking below to resolveScript. (Opcode value implementations will need to report a return type.)
 				//      The type checking at that point would be less comprehensive, probably, but this seems to be the direction I need to go to improve performance.
@@ -247,61 +293,49 @@ public class ScriptTupleRunnerThread extends Thread {
 					}
 				}
 				catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
-				Object[] arguments = tuple.getArguments();
+				java.util.List<Object> arguments = tuple.getArguments();
 				ScratchRuntime runtime = ScratchRuntimeImplementation.getScratchRuntime();
 				Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
-				if(opcodeImplementation == null)
-					throw new InvalidScriptDefinitionException("Unrecognized opcode: "+opcode);
 				DataType[] types = opcodeImplementation.getArgumentTypes();
-				if(types.length!=arguments.length)
-					if(!((types.length-1<=arguments.length)&&(types[types.length-1]==Opcode.DataType.OBJECTS)))
-						throw new InvalidScriptDefinitionException("Invalid arguments found for opcode, "+opcode);
-				if(opcodeImplementation instanceof OpcodeValue)
-					throw new InvalidScriptDefinitionException("Attempted to execute value opcode: "+opcode);
+				Object[] executableArguments = new Object[arguments.size()];
 				if(opcodeImplementation instanceof OpcodeAction) {
 					for(int i=0;i<types.length;i++) {
 						switch(types[i]) {
 						case BOOLEAN:
-							arguments[i] = getValue(context,arguments[i]);
+							executableArguments[i] = getValue(context,arguments.get(i));
 							
-							if(!(arguments[i] instanceof Boolean))
+							if(!(executableArguments[i] instanceof Boolean))
 								throw new InvalidScriptDefinitionException("Non-tuple provided where tuple expected.");
 							break;
 						case NUMBER:
-							arguments[i] = getValue(context,arguments[i]);
-							arguments[i] = OpcodeUtils.getNumericValue(arguments[i]);
+							executableArguments[i] = OpcodeUtils.getNumericValue(getValue(context,arguments.get(i)));
 							break;
 						case OBJECT:
-							arguments[i] = getValue(context,arguments[i]);
-							if(!((arguments[i] instanceof Boolean)||(arguments[i] instanceof Number)||(arguments[i] instanceof String)))
+							executableArguments[i] = getValue(context,arguments.get(i));
+							if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
 								throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 							break;
 						case OBJECTS:
 							Object[] newArguments = new Object[types.length];
 							System.arraycopy(arguments, 0, newArguments, 0, types.length-1);
-							Object[] objects = new Object[arguments.length-types.length+1];
+							Object[] objects = new Object[arguments.size()-types.length+1];
 							for(int j=0;j<objects.length;j++) {
-								objects[j] = getValue(context,arguments[i+j]);
+								objects[j] = getValue(context,arguments.get(i+j));
 								if(!((objects[j] instanceof Boolean)||(objects[j] instanceof Number)||(objects[j] instanceof String)))
 									throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 							}
-							arguments = newArguments;
-							arguments[i] = objects;
+							executableArguments = newArguments;
+							executableArguments[i] = objects;
 							break;
 						case STRING:
-							arguments[i] = getValue(context,arguments[i]);
-							arguments[i] = OpcodeUtils.getStringValue(arguments[i]);
-							break;
-						case SCRIPT:
-							if(!(arguments[i] instanceof ScriptTuple))
-								throw new InvalidScriptDefinitionException("Non-script-tuple provided where script tuple expected.");
+							executableArguments[i] = OpcodeUtils.getStringValue(getValue(context,arguments.get(i)));
 							break;
 						default:
 							throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
 						}
 					}
 					currentOpcode = opcodeImplementation;
-					((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, context, arguments);
+					((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, context, executableArguments);
 					blockTupleIndex++;
 				}
 			}
@@ -330,7 +364,7 @@ public class ScriptTupleRunnerThread extends Thread {
 		if(tuple instanceof ReadLocalVarBlockTuple)
 			return localVariables[((ReadLocalVarBlockTuple)tuple).getLocalVarIdentifier()];
 		ScriptTupleRunnerImpl scriptRunner = new ScriptTupleRunnerImpl(this);
-		Object[] arguments = tuple.getArguments();
+		java.util.List<Object> arguments = tuple.getArguments();
 		ScratchRuntime runtime = ScratchRuntimeImplementation.getScratchRuntime();
 		Opcode opcodeImplementation = getOpcode(tuple);
 		if(opcodeImplementation == null)
@@ -338,31 +372,32 @@ public class ScriptTupleRunnerThread extends Thread {
 		if(!(opcodeImplementation instanceof OpcodeValue))
 			throw new InvalidScriptDefinitionException("Attempted to evaluate non-value opcode: "+tuple.getOpcode());
 		DataType[] types = opcodeImplementation.getArgumentTypes();
-		if(types.length!= arguments.length)
+		if(types.length!= arguments.size())
 			throw new InvalidScriptDefinitionException("Invalid arguments found for opcode, "+tuple.getOpcode());
-		for(int i=0;i<arguments.length;i++) {
+		Object[] executableArguments = new Object[arguments.size()];
+		for(int i=0;i<arguments.size();i++) {
 			if(types[i]!=Opcode.DataType.TUPLE)
-				arguments[i] = getValue(context,arguments[i]);
+				executableArguments[i] = getValue(context,arguments.get(i));
 			switch(types[i]) {
 			case BOOLEAN:
-				if(!(arguments[i] instanceof Boolean))
-					throw new InvalidScriptDefinitionException("Non-tuple provided where tuple expected.");
+				if(!(executableArguments[i] instanceof Boolean))
+					throw new InvalidScriptDefinitionException("Non-boolean provided where boolean expected: "+executableArguments[i]);
 				break;
 			case NUMBER:
-				arguments[i] = OpcodeUtils.getNumericValue(arguments[i]);
+				executableArguments[i] = OpcodeUtils.getNumericValue(arguments.get(i));
 				break;
 			case OBJECT:
-				if(!((arguments[i] instanceof Boolean)||(arguments[i] instanceof Number)||(arguments[i] instanceof String)))
+				if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
 					throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 				break;
 			case STRING:
-				arguments[i] = OpcodeUtils.getStringValue(arguments[i]);
+				executableArguments[i] = OpcodeUtils.getStringValue(arguments.get(i));
 				break;
 			default:
 				throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcodeImplementation.getOpcode());
 			}
 		}
-		Object retval = ((OpcodeValue)opcodeImplementation).execute(runtime, scriptRunner, context, arguments);
+		Object retval = ((OpcodeValue)opcodeImplementation).execute(runtime, scriptRunner, context, executableArguments);
 		try {
 			Object methodRetval = context.getClass().getMethod("getProcName").invoke(context);
 			if(methodRetval.toString().equals("Fill Horizontal Line %s %n %n %n %n")||methodRetval.toString().startsWith("Fill Circle")||methodRetval.toString().startsWith("Init Caves")||methodRetval.toString().startsWith("Make Seams")) {
