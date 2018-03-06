@@ -5,22 +5,17 @@ package com.shtick.utils.scratch.runner.impl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
 
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.Opcode.DataType;
 import com.shtick.utils.scratch.runner.core.OpcodeAction;
-import com.shtick.utils.scratch.runner.core.OpcodeControl;
-import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
 import com.shtick.utils.scratch.runner.core.OpcodeValue;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
-import com.shtick.utils.scratch.runner.core.elements.ScriptTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.BasicJumpBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.ChangeLocalVarByBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.ControlBlockTuple;
@@ -240,8 +235,9 @@ public class ScriptTupleRunnerThread extends Thread {
 	}
 	
 	private Object getValue(ScriptContext context, Object object) throws InvalidScriptDefinitionException {
-		if(object instanceof BlockTuple)
+		if(object instanceof BlockTuple) {
 			return getBlockTupleValue(context, (BlockTuple)object);
+		}
 		try {
 			Object methodRetval = context.getClass().getMethod("getProcName").invoke(context);
 			if(methodRetval.toString().equals("Fill Horizontal Line %s %n %n %n %n")||methodRetval.toString().startsWith("Fill Circle")||methodRetval.toString().startsWith("Init Caves")||methodRetval.toString().startsWith("Make Seams")) {
@@ -277,14 +273,14 @@ public class ScriptTupleRunnerThread extends Thread {
 					throw new InvalidScriptDefinitionException("Non-boolean provided where boolean expected: "+executableArguments[i]);
 				break;
 			case NUMBER:
-				executableArguments[i] = OpcodeUtils.getNumericValue(arguments.get(i));
+				executableArguments[i] = OpcodeUtils.getNumericValue(executableArguments[i]);
 				break;
 			case OBJECT:
 				if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
 					throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 				break;
 			case STRING:
-				executableArguments[i] = OpcodeUtils.getStringValue(arguments.get(i));
+				executableArguments[i] = OpcodeUtils.getStringValue(executableArguments[i]);
 				break;
 			default:
 				throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcodeImplementation.getOpcode());
@@ -348,29 +344,17 @@ public class ScriptTupleRunnerThread extends Thread {
 		}
 
 		/* (non-Javadoc)
-		 * @see com.shtick.utils.scratch.runner.core.ScriptTupleRunner#runScript(com.shtick.utils.scratch.runner.core.elements.ScriptTuple)
-		 */
-		@Override
-		public void runBlockTuples(ScriptContext context, java.util.List<BlockTuple> script) throws InvalidScriptDefinitionException{
-			// TODO Completely remove this. Scripts are now reporting their child code blocks and logic rather than calling this function. ScriptTupleRunner may be eliminated as a core object passed in to opcodes.
-//			if((script==null)||(script.size()==0)) {
-//				if((!thread.isAtomic)&&(thread.instructionDelayMillis>0)) {
-//					try {
-//						Thread.sleep(thread.instructionDelayMillis);
-//					}
-//					catch(InterruptedException t) {}
-//				}
-//				return;
-//			}
-//			thread.runBlockTuples(context, script.iterator());
-		}
-
-		/* (non-Javadoc)
 		 * @see com.shtick.utils.scratch.runner.core.ScriptTupleRunner#getOpcode(com.shtick.utils.scratch.runner.core.elements.BlockTuple)
 		 */
 		@Override
 		public Opcode getOpcode(BlockTuple blockTuple) {
 			return ScriptTupleRunnerThread.getOpcode(blockTuple);
+		}
+
+		@Override
+		public ScriptContext getContext() {
+			// TODO Auto-generated method stub
+			return thread.scriptTuple.getContext();
 		}
 
 		/* (non-Javadoc)
