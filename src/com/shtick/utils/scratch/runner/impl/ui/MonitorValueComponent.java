@@ -61,8 +61,10 @@ public class MonitorValueComponent extends JComponent{
 
 		setPreferredSize(new Dimension(50,fontHeight+VERTICAL_PAD*2));
 		StageMonitorCommand monitorCommand = Activator.STAGE_MONITOR_COMMAND_TRACKER.getCommand(command);
-		if(monitorCommand==null)
-			System.err.println("StageMonitorCommand not found: "+command);
+		if(monitorCommand==null) {
+			System.err.println("Error: StageMonitorCommand not found: "+command);
+			return;
+		}
 		monitorCommand.addValueListener(new ValueListener() {
 			String[] arguments = new String[] {param};
 			@Override
