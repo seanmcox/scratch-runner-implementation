@@ -28,6 +28,7 @@ import com.shtick.utils.scratch.runner.impl.BubbleImage;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.bundle.GraphicEffectTracker;
+import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation.ImageAndArea;
 import com.shtick.utils.scratch.runner.impl.elements.SpriteImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.StageMonitorImplementation;
 
@@ -39,6 +40,9 @@ public class StagePanel extends JPanel {
 	private static Object LAYER_LOCK = new Object();
 	private BufferedImage penLayer;
 	private HashMap<RenderableChild,Component> renderableChildComponents;
+	
+	// Reused painting objects
+	private Rectangle paintingRectangle = new Rectangle();
 
 	/**
 	 * 
@@ -134,49 +138,42 @@ public class StagePanel extends JPanel {
 		
 		BubbleImage bubbleImage = runtime.getBubbleImage();
 		RenderableChild[] children = runtime.getAllRenderableChildren();
-		Rectangle rectangle = new Rectangle();
 		for(RenderableChild child:children) {
 			if(!child.isVisible())
 				continue;
 			if(child instanceof Sprite) {
-				Sprite sprite = (Sprite) child;
+				SpriteImplementation sprite = (SpriteImplementation) child;
 				synchronized(sprite.getSpriteLock()) {
 					Costume costume = sprite.getCurrentCostume();
-					BufferedImage image = deepCopy(costume.getImage());
+//					BufferedImage image = deepCopy(costume.getImage());
+					ImageAndArea image = sprite.getScaledAndRotatedImage();
+					if(image==null)
+						continue;
 					
 					// Contrary to the usual Scratch mangling of standard practices,
 					// centerX and centerY have the usual meaning of being values
 					// relative to the upper-left corner of the image, with values
 					// increasing left to right and top to bottom respectively.
-					int centerX = costume.getRotationCenterX();
-					int centerY = costume.getRotationCenterY();
-					
-					// TODO Scale the image using a smoother algorithm rather than scaling the Graphics2D. (Current scaling method doesn't look good.)
-					Graphics2D g2 = (Graphics2D)g2Scratch.create();
-					g2.translate(sprite.getScratchX(), -sprite.getScratchY());
-					g2.scale(sprite.getScale()/costume.getBitmapResolution(), sprite.getScale()/costume.getBitmapResolution());
-					switch(sprite.getRotationStyle()) {
-					case "normal":
-						g2.rotate((sprite.getDirection()-90)*Math.PI/180);
-						break;
-					case "leftRight":
-						if(sprite.getDirection()<0)
-							g2.scale(-1.0, 1.0);
-						break;
-					default:
-						break;
-					}
+					int centerX = image.rotationCenterX;
+					int centerY = image.rotationCenterY;
+
+					// TODO Move effect application to image pool.
 					Map<String,Double> effects = ((SpriteImplementation)sprite).getEffects();
-					GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
-					for(String name:effects.keySet()) {
-						GraphicEffect effect = tracker.getGraphicEffect(name);
-						if(effect==null) {
-							System.err.println("WARNING: Effect not found: "+name);
-							continue;
+					BufferedImage img = image.image;
+					if(effects.size()>0) {
+						img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
+						img.getGraphics().drawImage(image.image, 0, 0, null);
+						GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
+						for(String name:effects.keySet()) {
+							GraphicEffect effect = tracker.getGraphicEffect(name);
+							if(effect==null) {
+								System.err.println("WARNING: Effect not found: "+name);
+								continue;
+							}
+							img = effect.getAffectedImage(img, effects.get(name));
 						}
-						image = effect.getAffectedImage(image, effects.get(name));
 					}
-					g2.drawImage(image, -centerX, -centerY, null);
+					g2Scratch.drawImage(img, (int)(sprite.getScratchX()-centerX), (int)(-sprite.getScratchY()-centerY), null);
 					
 				}
 			}
@@ -187,7 +184,7 @@ public class StagePanel extends JPanel {
 				synchronized(getTreeLock()) {
 					Rectangle cr;
 
-					cr = component.getBounds(rectangle);
+					cr = component.getBounds(paintingRectangle);
 	
 					boolean hitClip = g.hitClip(cr.x, cr.y, cr.width, cr.height);
 					if (hitClip) {

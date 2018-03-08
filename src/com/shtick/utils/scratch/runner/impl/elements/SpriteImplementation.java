@@ -7,7 +7,6 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Stroke;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -42,6 +41,7 @@ import com.shtick.utils.scratch.runner.impl.ScriptTupleRunnerThread;
 import com.shtick.utils.scratch.runner.impl.ThreadTaskQueue;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.bundle.GraphicEffectTracker;
+import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation.ImageAndArea;
 
 /**
  * @author sean.cox
@@ -66,7 +66,6 @@ public class SpriteImplementation implements Sprite{
 	private boolean visible;
 	private Map<String,Object> spriteInfo;
 	private ScriptContext parentContext;
-	private Area spriteArea = null;
 	private Map<String,Double> effectValues = new HashMap<>(7);
 	private LinkedList<SpriteListener> spriteListeners = new LinkedList<>();
 
@@ -165,6 +164,9 @@ public class SpriteImplementation implements Sprite{
 		this.visible = visible;
 		this.spriteInfo = spriteInfo;
 		this.parentContext = parentContext;
+		synchronized(LOCK) {
+			registerWithCostumeImagePool();
+		}
 	}
 
 	/* (non-Javadoc)
@@ -331,8 +333,9 @@ public class SpriteImplementation implements Sprite{
 			final int newIndex = i+1;
 			final String oldName = costumes[currentCostumeIndex].getCostumeName();
 			final String newName = costumes[i].getCostumeName();
+			costumes[currentCostumeIndex].unregisterSprite(this);
 			currentCostumeIndex = i;
-			spriteArea = null;
+			registerWithCostumeImagePool();
 			ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 			SwingUtilities.invokeLater(()->{
 				synchronized(spriteListeners) {
@@ -340,6 +343,20 @@ public class SpriteImplementation implements Sprite{
 						listener.costumeChanged(oldIndex,oldName,newIndex,newName);
 				}
 			});
+		}
+	}
+	
+	private void registerWithCostumeImagePool() {
+		switch(getRotationStyle()) {
+		case "normal":
+			costumes[currentCostumeIndex].registerSprite(this, scale,(getDirection()-90)*Math.PI/180,false);
+			break;
+		case "leftRight":
+			costumes[currentCostumeIndex].registerSprite(this, scale,0,getDirection()<0);
+			break;
+		default:
+			costumes[currentCostumeIndex].registerSprite(this, scale,0,false);
+			break;
 		}
 	}
 
@@ -387,12 +404,23 @@ public class SpriteImplementation implements Sprite{
 		}
 		System.err.println("WARNING: Costume name, "+name+", not found for sprite, "+objName);
 	}
+	
+	/**
+	 * 
+	 * @return An object containing the appropriate image, center, and bounds information for the identified sprite.
+	 */
+	public ImageAndArea getScaledAndRotatedImage() {
+		synchronized(LOCK) {
+			return costumes[currentCostumeIndex].getScaledAndRotatedImage(this);
+		}
+	}
 
 	/* (non-Javadoc)
 	 * @see com.shtick.utils.scratch.runner.core.elements.Sprite#stampSprite()
 	 */
 	@Override
 	public void stampSprite() {
+		// TODO Use the new image pool.
 		Costume costume = getCurrentCostume();
 		BufferedImage image = costume.getImage();
 
@@ -544,7 +572,7 @@ public class SpriteImplementation implements Sprite{
 			final double oldScale = this.scale;
 			final double newScale = scale;
 			this.scale = scale;
-			spriteArea = null;
+			registerWithCostumeImagePool();
 			ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 			SwingUtilities.invokeLater(()->{
 				synchronized(spriteListeners) {
@@ -573,7 +601,7 @@ public class SpriteImplementation implements Sprite{
 			final double oldDirection = this.direction;
 			final double newDirection = direction;
 			this.direction = direction;
-			spriteArea = null;
+			registerWithCostumeImagePool();
 			ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 			SwingUtilities.invokeLater(()->{
 				synchronized(spriteListeners) {
@@ -596,7 +624,7 @@ public class SpriteImplementation implements Sprite{
 				return;
 			final String old = this.rotationStyle;
 			this.rotationStyle = rotationStyle;
-			spriteArea = null;
+			registerWithCostumeImagePool();
 			ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 			SwingUtilities.invokeLater(()->{
 				synchronized(spriteListeners) {
@@ -986,8 +1014,6 @@ public class SpriteImplementation implements Sprite{
 					}
 				}
 	
-				CostumeImplementation[] costumes = new CostumeImplementation[this.costumes.length];
-				System.arraycopy(this.costumes, 0, costumes, 0, costumes.length);
 				SpriteImplementation clone = new SpriteImplementation(
 						objName,
 						variables,
@@ -1096,6 +1122,7 @@ public class SpriteImplementation implements Sprite{
 			throw new IllegalStateException("deleteClone called onthread not belonging to clone's ThreadGroup");
 		// Set clone scripts.
 		synchronized(LOCK) {
+			costumes[currentCostumeIndex].unregisterSprite(this);
 			for(ScriptTupleImplementation script:scripts) {
 				BlockTuple[] blockTuples = script.getBlockTuples().toArray(new BlockTuple[script.getBlockTupleCount()]);
 				if(blockTuples.length>0) {
@@ -1130,26 +1157,10 @@ public class SpriteImplementation implements Sprite{
 		synchronized(LOCK) {
 			if(!visible)
 				return new Area();
-			if(spriteArea!=null)
-				return (Area)spriteArea.clone();
-			spriteArea = (Area)costumes[currentCostumeIndex].getCostumeArea().clone();
-			double scale = this.scale/costumes[currentCostumeIndex].getBitmapResolution();
-			switch(rotationStyle) {
-			case "normal":
-				spriteArea.transform(AffineTransform.getScaleInstance(scale, scale));
-				spriteArea.transform(AffineTransform.getRotateInstance((direction-90)*Math.PI/180));
-				break;
-			case "leftRight":
-				if(direction<0)
-					spriteArea.transform(AffineTransform.getScaleInstance(-scale, scale));
-				else
-					spriteArea.transform(AffineTransform.getScaleInstance(scale, scale));
-				break;
-			default:
-				spriteArea.transform(AffineTransform.getScaleInstance(scale, scale));
-				break;
-			}
-			return (Area)spriteArea.clone();
+			return (Area)costumes[currentCostumeIndex]
+					.getScaledAndRotatedImage(this)
+					.getCostumeArea()
+					.clone(); // Don't give the original to external entities. (Might have to simply depend on external entities to play nice if this becomes an important performance issue.)
 		}
 	}
 
