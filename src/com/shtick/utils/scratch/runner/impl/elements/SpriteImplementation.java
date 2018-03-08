@@ -420,18 +420,20 @@ public class SpriteImplementation implements Sprite{
 	 */
 	@Override
 	public void stampSprite() {
-		ImageAndArea imageAndArea = getScaledAndRotatedImage();
-		
-		// Contrary to the usual Scratch mangling of standard practices,
-		// centerX and centerY have the usual meaning of being values
-		// relative to the upper-left corner of the image, with values
-		// increasing left to right and top to bottom respectively.
-		int centerX = imageAndArea.rotationCenterX;
-		int centerY = imageAndArea.rotationCenterY;
-		
-		Graphics2D g2 = ScratchRuntimeImplementation.getScratchRuntime().getPenLayerGraphics();
-		BufferedImage img = imageAndArea.image;
 		synchronized(LOCK) {
+			ImageAndArea imageAndArea = getScaledAndRotatedImage();
+			if(imageAndArea==null)
+				return;
+			
+			// Contrary to the usual Scratch mangling of standard practices,
+			// centerX and centerY have the usual meaning of being values
+			// relative to the upper-left corner of the image, with values
+			// increasing left to right and top to bottom respectively.
+			int centerX = imageAndArea.rotationCenterX;
+			int centerY = imageAndArea.rotationCenterY;
+		
+			Graphics2D g2 = ScratchRuntimeImplementation.getScratchRuntime().getPenLayerGraphics();
+			BufferedImage img = imageAndArea.image;
 			if(effectValues.size()>0) {
 				img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
 				img.getGraphics().drawImage(imageAndArea.image, 0, 0, null);
@@ -445,8 +447,8 @@ public class SpriteImplementation implements Sprite{
 					img = effect.getAffectedImage(img, effectValues.get(name));
 				}
 			}
+			g2.drawImage(img, (int)(getScratchX()-centerX), (int)(-getScratchY()-centerY), null);
 		}
-		g2.drawImage(img, (int)(getScratchX()-centerX), (int)(-getScratchY()-centerY), null);
 		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 	}
 

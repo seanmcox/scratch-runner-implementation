@@ -384,9 +384,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		final ScriptTupleRunner[] retval = new ScriptTupleRunner[1];
 		Runnable runnable = ()->{
 			ScriptTupleRunnerThread thread = stage.createRunner((ScriptTupleImplementation)script, isAtomic);
-			if(thread!=null)
+			if(thread!=null) {
 				thread.start();
-			retval[0] = thread.getScriptTupleRunner();
+				retval[0] = thread.getScriptTupleRunner();
+			}
 		};
 		if(TASK_QUEUE.isQueueThread())
 			runnable.run();
@@ -947,8 +948,8 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			for(Object variableObject:variablesList) {
 				if(!(variableObject instanceof Map<?,?>))
 					throw new IOException("variable not encoded as map");
-				String name = (String)((Map<String,Object>)variableObject).get("name");
-				String value = (String)((Map<String,Object>)variableObject).get("name");
+				String name = (String)((Map<?,?>)variableObject).get("name");
+				Object value = ((Map<?,?>)variableObject).get("value");
 				variables[i] = new VariableImplementation(name, value);
 				i++;
 			}

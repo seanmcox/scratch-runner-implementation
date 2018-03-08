@@ -452,10 +452,12 @@ public class StageImplementation implements Stage{
 	public void stopThreads() {
 		stopAll = true;
 		ScratchRuntimeImplementation.getScratchRuntime().stopAllSounds();
-		for(Object child:children) {
-			if(!(child instanceof SpriteImplementation))
-				continue;
-			((SpriteImplementation)child).stopThreads();
+		synchronized(children) {
+			for(Object child:children) {
+				if(!(child instanceof SpriteImplementation))
+					continue;
+				((SpriteImplementation)child).stopThreads();
+			}
 		}
 		ThreadTaskQueue taskQueue = ScratchRuntimeImplementation.getScratchRuntime().getThreadManagementTaskQueue();
 		taskQueue.invokeLater(()->{

@@ -145,6 +145,8 @@ public class StagePanel extends JPanel {
 				SpriteImplementation sprite = (SpriteImplementation) child;
 				synchronized(sprite.getSpriteLock()) {
 					ImageAndArea imageAndArea = sprite.getScaledAndRotatedImage();
+					if(imageAndArea==null)
+						continue;
 					
 					// Contrary to the usual Scratch mangling of standard practices,
 					// centerX and centerY have the usual meaning of being values
