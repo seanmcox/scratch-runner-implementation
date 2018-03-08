@@ -420,43 +420,33 @@ public class SpriteImplementation implements Sprite{
 	 */
 	@Override
 	public void stampSprite() {
-		// TODO Use the new image pool.
-		Costume costume = getCurrentCostume();
-		BufferedImage image = costume.getImage();
-
+		ImageAndArea imageAndArea = getScaledAndRotatedImage();
+		
 		// Contrary to the usual Scratch mangling of standard practices,
 		// centerX and centerY have the usual meaning of being values
 		// relative to the upper-left corner of the image, with values
 		// increasing left to right and top to bottom respectively.
-		int centerX = costume.getRotationCenterX();
-		int centerY = costume.getRotationCenterY();
+		int centerX = imageAndArea.rotationCenterX;
+		int centerY = imageAndArea.rotationCenterY;
 		
 		Graphics2D g2 = ScratchRuntimeImplementation.getScratchRuntime().getPenLayerGraphics();
-		g2.translate(getScratchX(), -getScratchY());
-		g2.scale(getScale(), getScale());
-		switch(getRotationStyle()) {
-		case "normal":
-			g2.rotate((getDirection()-90)*Math.PI/180);
-			break;
-		case "leftRight":
-			if(getDirection()<0)
-				g2.scale(-1.0, 1.0);
-			break;
-		default:
-			break;
-		}
+		BufferedImage img = imageAndArea.image;
 		synchronized(LOCK) {
-			GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
-			for(String name:effectValues.keySet()) {
-				GraphicEffect effect = tracker.getGraphicEffect(name);
-				if(effect==null) {
-					System.err.println("WARNING: Effect not found: "+name);
-					continue;
+			if(effectValues.size()>0) {
+				img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
+				img.getGraphics().drawImage(imageAndArea.image, 0, 0, null);
+				GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
+				for(String name:effectValues.keySet()) {
+					GraphicEffect effect = tracker.getGraphicEffect(name);
+					if(effect==null) {
+						System.err.println("WARNING: Effect not found: "+name);
+						continue;
+					}
+					img = effect.getAffectedImage(img, effectValues.get(name));
 				}
-				image = effect.getAffectedImage(image, effectValues.get(name));
 			}
 		}
-		g2.drawImage(image, -centerX, -centerY, null);
+		g2.drawImage(img, (int)(getScratchX()-centerX), (int)(-getScratchY()-centerY), null);
 		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 	}
 

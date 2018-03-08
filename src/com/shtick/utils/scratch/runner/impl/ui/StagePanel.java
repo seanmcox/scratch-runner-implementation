@@ -144,25 +144,21 @@ public class StagePanel extends JPanel {
 			if(child instanceof Sprite) {
 				SpriteImplementation sprite = (SpriteImplementation) child;
 				synchronized(sprite.getSpriteLock()) {
-					Costume costume = sprite.getCurrentCostume();
-//					BufferedImage image = deepCopy(costume.getImage());
-					ImageAndArea image = sprite.getScaledAndRotatedImage();
-					if(image==null)
-						continue;
+					ImageAndArea imageAndArea = sprite.getScaledAndRotatedImage();
 					
 					// Contrary to the usual Scratch mangling of standard practices,
 					// centerX and centerY have the usual meaning of being values
 					// relative to the upper-left corner of the image, with values
 					// increasing left to right and top to bottom respectively.
-					int centerX = image.rotationCenterX;
-					int centerY = image.rotationCenterY;
+					int centerX = imageAndArea.rotationCenterX;
+					int centerY = imageAndArea.rotationCenterY;
 
 					// TODO Move effect application to image pool.
 					Map<String,Double> effects = ((SpriteImplementation)sprite).getEffects();
-					BufferedImage img = image.image;
+					BufferedImage img = imageAndArea.image;
 					if(effects.size()>0) {
 						img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
-						img.getGraphics().drawImage(image.image, 0, 0, null);
+						img.getGraphics().drawImage(imageAndArea.image, 0, 0, null);
 						GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
 						for(String name:effects.keySet()) {
 							GraphicEffect effect = tracker.getGraphicEffect(name);
