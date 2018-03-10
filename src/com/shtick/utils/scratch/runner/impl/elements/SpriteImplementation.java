@@ -1149,8 +1149,11 @@ public class SpriteImplementation implements Sprite{
 		synchronized(LOCK) {
 			if(!visible)
 				return new Area();
-			return (Area)costumes[currentCostumeIndex]
-					.getScaledAndRotatedImage(this)
+			ImageAndArea imageAndArea = costumes[currentCostumeIndex]
+					.getScaledAndRotatedImage(this);
+			if(imageAndArea==null)
+				return new Area();
+			return (Area)imageAndArea
 					.getCostumeArea()
 					.clone(); // Don't give the original to external entities. (Might have to simply depend on external entities to play nice if this becomes an important performance issue.)
 		}

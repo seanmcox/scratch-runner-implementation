@@ -124,8 +124,9 @@ public class ScriptTupleImplementation implements ScriptTuple {
 				jumpBlockTuples.add((JumpBlockTuple)blockTuple);
 		}
 		// Make initial start index adjustment
-		for(JumpBlockTuple jumpBlockTuple:jumpBlockTuples)
+		for(JumpBlockTuple jumpBlockTuple:jumpBlockTuples) {
 			jumpBlockTuple.setIndex(jumpBlockTuple.getIndex()+startIndex);
+		}
 		
 		int i = startIndex;
 		// Process block tuples, inflating control blocks.
