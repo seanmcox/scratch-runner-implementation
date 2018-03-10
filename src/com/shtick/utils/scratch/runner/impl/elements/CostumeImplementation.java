@@ -100,7 +100,7 @@ public class CostumeImplementation implements Costume{
 	 * 
 	 * @param sprite 
 	 * @param scale
-	 * @param direction In radians, indicating a clockwise direction starting from the right. Value must be >=0 and &lt;Math.PI
+	 * @param direction In radians, indicating a clockwise direction starting from the right. Value must be >=0 and &lt;2*Math.PI
 	 * @param mirror For left/right style images, then when this is true, the direction should be set as if there were no rotation at all.
 	 *               The image is flipped first, and then rotated. The overall affect allows for mirror images in any direction, although scratch does not support such a style.
 	 */

@@ -349,7 +349,7 @@ public class SpriteImplementation implements Sprite{
 	private void registerWithCostumeImagePool() {
 		switch(getRotationStyle()) {
 		case "normal":
-			costumes[currentCostumeIndex].registerSprite(this, scale,(getDirection()-90)*Math.PI/180,false);
+			costumes[currentCostumeIndex].registerSprite(this, scale,((getDirection()-90+360)%360)*Math.PI/180,false);
 			break;
 		case "leftRight":
 			costumes[currentCostumeIndex].registerSprite(this, scale,0,getDirection()<0);
