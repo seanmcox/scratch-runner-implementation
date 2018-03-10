@@ -25,7 +25,7 @@ public class ScratchFile {
 	public ScratchFile(File file) throws IOException{
 		super();
 		if(!file.exists())
-			throw new FileNotFoundException();
+			throw new FileNotFoundException(file.getPath());
 		if(!file.isFile())
 			throw new IOException("File not a file.");
 		this.file = file;

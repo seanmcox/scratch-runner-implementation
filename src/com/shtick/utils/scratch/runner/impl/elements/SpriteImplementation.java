@@ -1127,7 +1127,9 @@ public class SpriteImplementation implements Sprite{
 				}
 			}
 		}
-		cloneOf.clones.remove(this);
+		synchronized(cloneOf.getSpriteLock()) {
+			cloneOf.clones.remove(this);
+		}
 		ScratchRuntimeImplementation.getScratchRuntime().deleteClone(this);
 		stopThreads();
 		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
