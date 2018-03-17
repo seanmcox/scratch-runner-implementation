@@ -90,6 +90,7 @@ import org.w3c.dom.svg.SVGDocument;
 import com.shtick.util.tokenizers.json.NumberToken;
 import com.shtick.utils.data.json.JSONDecoder;
 import com.shtick.utils.data.json.JSONNumberDecoder;
+import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
@@ -1204,7 +1205,13 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			blockTuples[i] = (BlockTuple)tuple;
 			i++;
 		}
-		ScriptTupleImplementation retval = new ScriptTupleImplementation(context, blockTuples);
+		ScriptTupleImplementation retval;
+		try {
+			retval = new ScriptTupleImplementation(context, blockTuples);
+		}
+		catch(InvalidScriptDefinitionException t) {
+			throw new IOException(t);
+		}
 		if(blockTuples.length>0) {
 			BlockTuple maybeHat = blockTuples[0];
 			String opcode = maybeHat.getOpcode();

@@ -33,12 +33,14 @@ public class ScriptTupleImplementation implements ScriptTuple {
 	/**
 	 * @param context 
 	 * @param blockTuples
+	 * @throws InvalidScriptDefinitionException 
 	 */
-	public ScriptTupleImplementation(ScriptContext context, BlockTuple[] blockTuples) {
+	public ScriptTupleImplementation(ScriptContext context, BlockTuple[] blockTuples) throws InvalidScriptDefinitionException{
 		super();
 		this.context = context;
 		this.cloneableData = new CloneableData();
 		this.cloneableData.blockTuples = blockTuples;
+		resolveScript();
 	}
 	
 	private ScriptTupleImplementation(ScriptContext context, CloneableData cloneableData) {
