@@ -125,8 +125,10 @@ import com.shtick.utils.scratch.runner.impl.ui.StagePanel;
 public class ScratchRuntimeImplementation implements ScratchRuntime {
 	private static ScratchRuntimeImplementation RUNTIME;
 	private static final ThreadTaskQueue TASK_QUEUE = new ThreadTaskQueue();
+	private static final ScriptTupleThread SCRIPT_TUPLE_THREAD = new ScriptTupleThread();
 	private static String RESOURCE_PROJECT_FILE = "project.json";
 	private StageImplementation stage;
+	
 	/**
 	 * Map of named (non-clone) sprites.
 	 */
@@ -137,6 +139,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	private JFrame mainWindow;
 	private int stageWidth;
 	private int stageHeight;
+	private boolean repaintNeeded = true;
 	
 	// Mouse properties
 	private final Object MOUSE_LOCK = new Object();
@@ -534,20 +537,8 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntime#startScript(com.shtick.utils.scratch.runner.core.elements.ScriptTuple)
 	 */
 	@Override
-	public ScriptTupleRunner startScript(ScriptTuple script, boolean isAtomic) {
-		final ScriptTupleRunner[] retval = new ScriptTupleRunner[1];
-		Runnable runnable = ()->{
-			ScriptTupleRunnerThread thread = stage.createRunner((ScriptTupleImplementation)script, isAtomic);
-			if(thread!=null) {
-				thread.start();
-				retval[0] = thread.getScriptTupleRunner();
-			}
-		};
-		if(TASK_QUEUE.isQueueThread())
-			runnable.run();
-		else
-			TASK_QUEUE.invokeAndWait(runnable);
-		return retval[0];
+	public ScriptTupleRunner startScript(ScriptTuple script) {
+		return SCRIPT_TUPLE_THREAD.startScriptTuple((ScriptTupleImplementation)script);
 	}
 
 	private void greenFlagClicked() {
@@ -566,6 +557,14 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 */
 	public ThreadTaskQueue getThreadManagementTaskQueue() {
 		return TASK_QUEUE;
+	}
+	
+	/**
+	 * 
+	 * @return Not really a thread, but an object that manages the thread that runs the scripts.
+	 */
+	public ScriptTupleThread getScriptTupleThread() {
+		return SCRIPT_TUPLE_THREAD;
 	}
 
 	/* (non-Javadoc)
@@ -661,15 +660,22 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 */
 	@Override
 	public void repaintStage() {
-		Thread thread = Thread.currentThread();
-		boolean repaint = true;
-		if(thread instanceof ScriptTupleRunnerThread) {
-			repaint = !((ScriptTupleRunnerThread)thread).isAtomic(); 
+		synchronized(mainWindow) {
+			repaintNeeded = true;
 		}
-		if(repaint)
+	}
+	
+	/**
+	 * Called by the ScriptTupleThread.
+	 * If repaint was requested, then this triggers the repaint to occur.
+	 */
+	protected void repaintStageFinal() {
+		if((mainWindow==null)||(!repaintNeeded))
+			return;
+		synchronized(mainWindow) {
 			mainWindow.repaint();
-		// TODO If atomic, then track whether repaint was requested and whether a repaint was attempted and aborted here.
-		//      When the atomic script ends, then execute a repaint request.
+			repaintNeeded = false;
+		}
 	}
 
 	/**

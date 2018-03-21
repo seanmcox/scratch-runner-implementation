@@ -30,8 +30,10 @@ import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeAction;
 import com.shtick.utils.scratch.runner.core.OpcodeControl;
+import com.shtick.utils.scratch.runner.core.OpcodeSubaction;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
+import com.shtick.utils.scratch.runner.core.SoundMonitor;
 import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
@@ -63,7 +65,14 @@ public class ScriptTupleImplementationTest {
 				new BlockTupleImplementation("4",new ArrayList<>(0)),
 				new BlockTupleImplementation("5",new ArrayList<>(0))
 		};
-		ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+		ScriptTupleImplementation tuple = null;
+		try {
+			tuple = new ScriptTupleImplementation(context, blockTuples);
+		}
+		catch(InvalidScriptDefinitionException t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
 		assertEquals(context,tuple.getContext());
 		assertArrayEquals(blockTuples,tuple.getBlockTuples().toArray());
 	}
@@ -81,7 +90,14 @@ public class ScriptTupleImplementationTest {
 				new BlockTupleImplementation("4",new ArrayList<>(0)),
 				new BlockTupleImplementation("5",new ArrayList<>(0))
 		};
-		ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+		ScriptTupleImplementation tuple = null;
+		try {
+			tuple = new ScriptTupleImplementation(context, blockTuples);
+		}
+		catch(InvalidScriptDefinitionException t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
 		assertArrayEquals(blockTuples,tuple.toArray());
 	}
 
@@ -98,7 +114,14 @@ public class ScriptTupleImplementationTest {
 				new BlockTupleImplementation("4",new ArrayList<>(0)),
 				new BlockTupleImplementation("5",new ArrayList<>(0))
 		};
-		ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+		ScriptTupleImplementation tuple = null;
+		try {
+			tuple = new ScriptTupleImplementation(context, blockTuples);
+		}
+		catch(InvalidScriptDefinitionException t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
 		assertEquals(blockTuples.length,tuple.getBlockTupleCount());
 		for(int i=0;i<blockTuples.length;i++) {
 			assertEquals(blockTuples[i],tuple.getBlockTuple(i));
@@ -440,6 +463,11 @@ public class ScriptTupleImplementationTest {
 	private static class DumbyOpcodeTracker extends OpcodeTracker{
 		private static HashMap<String,Opcode> opcodes = new HashMap<>(10);
 		static {
+			opcodes.put("1",new NopOpcode());
+			opcodes.put("2",new NopOpcode());
+			opcodes.put("3",new NopOpcode());
+			opcodes.put("4",new NopOpcode());
+			opcodes.put("5",new NopOpcode());
 			opcodes.put("nop",new NopOpcode());
 			opcodes.put("empty",new EmptyOpcode());
 			opcodes.put("wrapper",new SimpleWrapperOpcode());
@@ -627,7 +655,7 @@ public class ScriptTupleImplementationTest {
 		}
 
 		@Override
-		public void playSoundByName(String soundName, boolean block) {
+		public SoundMonitor playSoundByName(String soundName) {
 			throw new UnsupportedOperationException("Called playSoundByName when not expected.");
 		}
 
@@ -652,13 +680,8 @@ public class ScriptTupleImplementationTest {
 		}
 
 		@Override
-		public void stopThreads() {
-			throw new UnsupportedOperationException("Called stopThreads when not expected.");
-		}
-
-		@Override
-		public ThreadGroup getThreadGroup() {
-			throw new UnsupportedOperationException("Called getThreadGroup when not expected.");
+		public void stopScripts() {
+			throw new UnsupportedOperationException("Called stopScripts when not expected.");
 		}
 	}
 	
@@ -675,8 +698,10 @@ public class ScriptTupleImplementationTest {
 		}
 
 		@Override
-		public void execute(ScratchRuntime runtime, ScriptTupleRunner scriptRunner, ScriptContext context,
+		public OpcodeSubaction execute(ScratchRuntime runtime, ScriptTupleRunner scriptRunner, ScriptContext context,
 				Object[] arguments) {
+			return null;
+			// TODO Test yield handling.
 		}
 		
 	}

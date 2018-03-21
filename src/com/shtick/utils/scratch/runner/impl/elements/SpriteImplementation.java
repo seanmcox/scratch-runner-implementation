@@ -27,6 +27,7 @@ import com.shtick.utils.scratch.runner.core.GraphicEffect;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
+import com.shtick.utils.scratch.runner.core.SoundMonitor;
 import com.shtick.utils.scratch.runner.core.SpriteListener;
 import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.Opcode.DataType;
@@ -37,8 +38,7 @@ import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.core.elements.Tuple;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
-import com.shtick.utils.scratch.runner.impl.ScriptTupleRunnerThread;
-import com.shtick.utils.scratch.runner.impl.ThreadTaskQueue;
+import com.shtick.utils.scratch.runner.impl.ScriptTupleThread;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.bundle.GraphicEffectTracker;
 import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation.ImageAndArea;
@@ -48,7 +48,6 @@ import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation.Image
  *
  */
 public class SpriteImplementation implements Sprite{
-	private final ThreadGroup THREAD_GROUP = new ThreadGroup("ScratchSpriteThreads"); 
 	private final Object LOCK = new Object();
 
 	private String objName;
@@ -212,55 +211,55 @@ public class SpriteImplementation implements Sprite{
 	 * @see com.shtick.utils.scratch.runner.core.elements.ScriptContext#playSoundByName(java.lang.String, boolean)
 	 */
 	@Override
-	public void playSoundByName(String soundName, boolean block) {
+	public SoundMonitor playSoundByName(String soundName) {
 		if(!soundsByName.containsKey(soundName))
 			throw new IllegalArgumentException("Could not find sound with name, "+soundName+", in "+objName+".");
 		SoundImplementation sound = soundsByName.get(soundName);
 		String resourceName = sound.getResourceName();
-		Clip clip;
 		try {
-			clip = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
+			final Clip clip = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
+			if(clip==null) {
+				return new SoundMonitor() {
+					
+					@Override
+					public boolean isDone() {
+						return true;
+					}
+				};
+			}
 			synchronized(activeClips) {
 				activeClips.add(clip);
-				if(block) {
-					if(clip.isRunning()) {
-						final Object localLock = new Object();
-						synchronized(localLock) {
-							clip.addLineListener(new LineListener() {
-								
-								@Override
-								public void update(LineEvent event) {
-									if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
-										synchronized(localLock) {
-											localLock.notifyAll();
-										}
-									}
-								}
-							});
-							localLock.wait();
-						}
-					}
-					activeClips.remove(clip);
-				}
-				else {
-					clip.addLineListener(new LineListener() {
-						
-						@Override
-						public void update(LineEvent event) {
-							if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
-								synchronized(activeClips) {
-									activeClips.remove(clip);
-								}
+				clip.addLineListener(new LineListener() {
+					
+					@Override
+					public void update(LineEvent event) {
+						if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
+							synchronized(activeClips) {
+								activeClips.remove(clip);
 							}
 						}
-					});
-					if(!clip.isRunning())
-						activeClips.remove(clip);
-				}
+					}
+				});
+				if(!clip.isRunning())
+					activeClips.remove(clip);
 			}
+			return new SoundMonitor() {
+				
+				@Override
+				public boolean isDone() {
+					return !clip.isRunning();
+				}
+			};
 		}
 		catch(Throwable t) {
 			t.printStackTrace();
+			return new SoundMonitor() {
+				
+				@Override
+				public boolean isDone() {
+					return true;
+				}
+			};
 		}
 	}
 
@@ -929,28 +928,9 @@ public class SpriteImplementation implements Sprite{
 	}
 
 	@Override
-	public ThreadGroup getThreadGroup() {
-		return THREAD_GROUP;
-	}
-	
-	@Override
-	public void stopThreads() {
-		ThreadTaskQueue taskQueue = ScratchRuntimeImplementation.getScratchRuntime().getThreadManagementTaskQueue();
-		taskQueue.invokeLater(()->{
-			// Stop all existing threads.
-			synchronized(THREAD_GROUP) {
-				int activeCount = THREAD_GROUP.activeCount();
-				Thread[] threads = new Thread[activeCount];
-				THREAD_GROUP.enumerate(threads);
-				for(Thread thread:threads) {
-					if(!(thread instanceof ScriptTupleRunnerThread)) {
-						System.out.println("Could not stop a Thread. Unexpected Thread running in Sprite thread group: "+thread);
-						continue;
-					}
-					((ScriptTupleRunnerThread)thread).flagStop();
-				}
-			}
-		});
+	public void stopScripts() {
+		ScriptTupleThread scriptTupleThread = ScratchRuntimeImplementation.getScratchRuntime().getScriptTupleThread();
+		scriptTupleThread.stopScriptsByContext(this);
 	}
 
 	/* (non-Javadoc)
@@ -1081,7 +1061,7 @@ public class SpriteImplementation implements Sprite{
 						continue;
 					BlockTuple firstTuple = script.getBlockTuple(0);
 					if("whenCloned".equals(firstTuple.getOpcode()))
-						runtime.startScript(script, false);
+						runtime.startScript(script);
 				}
 			}
 			ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
@@ -1110,8 +1090,6 @@ public class SpriteImplementation implements Sprite{
 			System.err.println("WARNING: deleteClone() called on non-clone.");
 			return;
 		}
-		if(Thread.currentThread().getThreadGroup()!=THREAD_GROUP)
-			throw new IllegalStateException("deleteClone called onthread not belonging to clone's ThreadGroup");
 		// Set clone scripts.
 		synchronized(LOCK) {
 			costumes[currentCostumeIndex].unregisterSprite(this);
@@ -1131,7 +1109,7 @@ public class SpriteImplementation implements Sprite{
 			cloneOf.clones.remove(this);
 		}
 		ScratchRuntimeImplementation.getScratchRuntime().deleteClone(this);
-		stopThreads();
+		stopScripts();
 		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 	}
 

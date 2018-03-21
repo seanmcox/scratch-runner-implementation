@@ -56,28 +56,16 @@ public class ScriptTupleImplementation implements ScriptTuple {
 	/**
 	 * 
 	 * @return A representation of the script in which all control opcodes have been resolved.
-	 * @throws InvalidScriptDefinitionException
 	 */
-	public BlockTuple[] getResolvedBlockTuples() throws InvalidScriptDefinitionException{
-		synchronized(cloneableData) {
-			if(cloneableData.resolvedBlockTuples == null) {
-				resolveScript();
-			}
-		}
+	public BlockTuple[] getResolvedBlockTuples() {
 		return cloneableData.resolvedBlockTuples;
 	}
 
 	/**
 	 * 
 	 * @return The number of local variables needed to run the resolved script.
-	 * @throws InvalidScriptDefinitionException
 	 */
-	public int getLocalVariableCount() throws InvalidScriptDefinitionException {
-		synchronized(cloneableData) {
-			if(cloneableData.resolvedBlockTuples == null) {
-				resolveScript();
-			}
-		}
+	public int getLocalVariableCount() {
 		return cloneableData.localVariableCount;
 	}
 

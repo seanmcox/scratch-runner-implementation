@@ -4,12 +4,13 @@
 package com.shtick.utils.scratch.runner.impl;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
+import java.util.Stack;
 
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.Opcode.DataType;
 import com.shtick.utils.scratch.runner.core.OpcodeAction;
+import com.shtick.utils.scratch.runner.core.OpcodeSubaction;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
 import com.shtick.utils.scratch.runner.core.OpcodeValue;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
@@ -33,26 +34,28 @@ import com.shtick.utils.scratch.runner.impl.elements.ScriptTupleImplementation;
  * @author sean.cox
  *
  */
-public class ScriptTupleRunnerThread extends Thread {
+public class ScriptTupleRunnable implements Runnable {
 	private ScriptTupleImplementation scriptTuple;
-	private boolean stop = false;
-	private int instructionDelayMillis;
-	private boolean isAtomic=false;
 	private Opcode currentOpcode = null;
 	private Object[] localVariables;
 	private boolean testResult;
 	
+	private Stack<YieldingScript> callStack = new Stack<>();
+	private OpcodeSubaction yieldCheck = null;
+
+	private final Object STOP_LOCK = new Object();
+	private boolean stop = false;
+	private boolean stopped = false;
+
 	/**
 	 * @param threadGroup 
 	 * @param scriptTuple
-	 * @param instructionDelayMillis 
 	 * @param isAtomic 
 	 */
-	public ScriptTupleRunnerThread(ThreadGroup threadGroup, ScriptTupleImplementation scriptTuple, int instructionDelayMillis, boolean isAtomic) {
-		super(threadGroup,"ScriptTupleRunner");
+	public ScriptTupleRunnable(ScriptTupleImplementation scriptTuple) {
 		this.scriptTuple = scriptTuple;
-		this.instructionDelayMillis = instructionDelayMillis;
-		this.isAtomic = isAtomic;
+		localVariables = new Object[scriptTuple.getLocalVariableCount()];
+		callStack.push(new YieldingScript(scriptTuple.getContext(), scriptTuple.getResolvedBlockTuples(), false));
 	}
 
 	/* (non-Javadoc)
@@ -60,30 +63,12 @@ public class ScriptTupleRunnerThread extends Thread {
 	 */
 	@Override
 	public void run() {
-		long startTime = System.currentTimeMillis();
 		try {
-			Object methodRetval = scriptTuple.getContext().getClass().getMethod("getProcName").invoke(scriptTuple.getContext());
-			if(methodRetval.toString().equals("Fill Random %n")) {
-				System.out.println("***** Filling random Start");
-				System.out.flush();
-			}
-		}
-		catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
-		try {
-			localVariables = new Object[scriptTuple.getLocalVariableCount()];
-			runBlockTuples(scriptTuple.getContext(), scriptTuple.getResolvedBlockTuples());
+			runBlockTuples();
 		}
 		catch(InvalidScriptDefinitionException t) {
 			throw new RuntimeException(t);
 		}
-		try {
-			Object methodRetval = scriptTuple.getContext().getClass().getMethod("getProcName").invoke(scriptTuple.getContext());
-			if(methodRetval.toString().equals("Fill Random %n")) {
-				System.out.println("***** Fill random runtime (ms): "+(System.currentTimeMillis()-startTime));
-				System.out.flush();
-			}
-		}
-		catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
 	}
 	
 	/**
@@ -95,10 +80,10 @@ public class ScriptTupleRunnerThread extends Thread {
 	
 	/**
 	 * 
-	 * @return true if this thread is running atomically, and false otherwise.
+	 * @return true if the script being run has completed, and false otherwise.
 	 */
-	public boolean isAtomic() {
-		return isAtomic;
+	public boolean isFinished() {
+		return stopped;
 	}
 	
 	/**
@@ -107,73 +92,91 @@ public class ScriptTupleRunnerThread extends Thread {
 	 * @param blockTuples The results of resolveScript(), so this shouldn't include any ControlBlockTuple elements.
 	 * @throws InvalidScriptDefinitionException
 	 */
-	private void runBlockTuples(ScriptContext context, BlockTuple[] blockTuples) throws InvalidScriptDefinitionException{
+	private void runBlockTuples() throws InvalidScriptDefinitionException{
+		if(callStack.size()==0)
+			return;
+		
+		// Handle yieldCheck.
+		if(yieldCheck!=null) {
+			if(yieldCheck.shouldYield())
+				return;
+			yieldCheck = null;
+		}
+		
+		// Run the next script segment.
+		YieldingScript yieldingScript = callStack.peek();
 		ScriptTupleRunnerImpl scriptRunner = new ScriptTupleRunnerImpl(this);
-		int blockTupleIndex=0;
 		try {
-			while((blockTupleIndex<blockTuples.length)&&(!stop)) {
-				BlockTuple tuple = blockTuples[blockTupleIndex];
+			while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stop)) {
+				BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
 				if(tuple instanceof ControlBlockTuple) {
 					if(tuple instanceof TestBlockTuple) {
-						testResult = (Boolean)getValue(context,tuple.getArguments().get(0));
-						blockTupleIndex++;
+						testResult = (Boolean)getValue(yieldingScript.context,tuple.getArguments().get(0));
+						yieldingScript.index++;
 						continue;
 					}
 					else if(tuple instanceof SetLocalVarBlockTuple) {
 						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = tuple.getArguments().get(1);
-						blockTupleIndex++;
+						yieldingScript.index++;
 						continue;
 					}
 					else if(tuple instanceof ChangeLocalVarByBlockTuple) {
 						Number value = OpcodeUtils.getNumericValue(localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()]);
-						Number change = OpcodeUtils.getNumericValue(getValue(context,tuple.getArguments().get(1)));
+						Number change = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,tuple.getArguments().get(1)));
 						if((value instanceof Double)||(value instanceof Double))
 							value = value.doubleValue()+change.doubleValue();
 						else
 							value = value.longValue()+change.longValue();
 						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = value;
-						blockTupleIndex++;
+						yieldingScript.index++;
 						continue;
 					}
-					if((!isAtomic)&&(instructionDelayMillis>0)) {
-						try {
-							Thread.sleep(instructionDelayMillis);
-						}
-						catch(InterruptedException t) {}
-					}
 					if(tuple instanceof BasicJumpBlockTuple) {
-						blockTupleIndex = ((JumpBlockTuple)tuple).getIndex();
+						if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
+							// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
+							yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
+							return;
+						}
+						yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
 						continue;
 					}
 					else if(tuple instanceof TrueJumpBlockTuple) {
 						if(testResult) {
-							blockTupleIndex = ((JumpBlockTuple)tuple).getIndex();
+							if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
+								// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
+								yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
+								return;
+							}
+							yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
 							continue;
 						}
 					}
 					else if(tuple instanceof FalseJumpBlockTuple) {
 						if(!testResult) {
-							blockTupleIndex = ((JumpBlockTuple)tuple).getIndex();
+							if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
+								// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
+								yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
+								return;
+							}
+							yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
 							continue;
 						}
 					}
 					else {
 						throw new InvalidScriptDefinitionException("Unrecognized control block: "+tuple.getClass().getCanonicalName());
 					}
-					blockTupleIndex++;
+					yieldingScript.index++;
 					continue;
-				}
-				if((!isAtomic)&&(instructionDelayMillis>0)) {
-					try {
-						Thread.sleep(instructionDelayMillis);
-					}
-					catch(InterruptedException t) {}
 				}
 				// TODO Move type/safety checking below to resolveScript. (Opcode value implementations will need to report a return type.)
 				//      The type checking at that point would be less comprehensive, probably, but this seems to be the direction I need to go to improve performance.
 				String opcode = tuple.getOpcode();
 				try {
-					Object methodRetval = context.getClass().getMethod("getProcName").invoke(context);
+					Object methodRetval = yieldingScript
+							.context
+							.getClass()
+							.getMethod("getProcName")
+							.invoke(yieldingScript.context);
 					if(methodRetval.toString().equals("Fill Horizontal Line %s %n %n %n %n")||methodRetval.toString().startsWith("Fill Circle")||methodRetval.toString().startsWith("Init Caves")||methodRetval.toString().startsWith("Make Seams")) {
 						System.out.println("***** "+opcode);
 						System.out.flush();
@@ -185,52 +188,68 @@ public class ScriptTupleRunnerThread extends Thread {
 				Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
 				DataType[] types = opcodeImplementation.getArgumentTypes();
 				Object[] executableArguments = new Object[arguments.size()];
-				if(opcodeImplementation instanceof OpcodeAction) {
-					for(int i=0;i<types.length;i++) {
-						switch(types[i]) {
-						case BOOLEAN:
-							executableArguments[i] = getValue(context,arguments.get(i));
-							
-							if(!(executableArguments[i] instanceof Boolean))
-								throw new InvalidScriptDefinitionException("Non-tuple provided where tuple expected.");
-							break;
-						case NUMBER:
-							executableArguments[i] = OpcodeUtils.getNumericValue(getValue(context,arguments.get(i)));
-							break;
-						case OBJECT:
-							executableArguments[i] = getValue(context,arguments.get(i));
-							if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
+				for(int i=0;i<types.length;i++) {
+					switch(types[i]) {
+					case BOOLEAN:
+						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i));
+						
+						if(!(executableArguments[i] instanceof Boolean))
+							throw new InvalidScriptDefinitionException("Non-tuple provided where tuple expected.");
+						break;
+					case NUMBER:
+						executableArguments[i] = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,arguments.get(i)));
+						break;
+					case OBJECT:
+						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i));
+						if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
+							throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
+						break;
+					case OBJECTS:
+						Object[] newArguments = new Object[types.length];
+						for(int j=0;j<types.length-1;j++)
+							newArguments[j] = arguments.get(j);
+						Object[] objects = new Object[arguments.size()-types.length+1];
+						for(int j=0;j<objects.length;j++) {
+							objects[j] = getValue(yieldingScript.context,arguments.get(i+j));
+							if(!((objects[j] instanceof Boolean)||(objects[j] instanceof Number)||(objects[j] instanceof String)))
 								throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
-							break;
-						case OBJECTS:
-							Object[] newArguments = new Object[types.length];
-							for(int j=0;j<types.length-1;j++)
-								newArguments[j] = arguments.get(j);
-							Object[] objects = new Object[arguments.size()-types.length+1];
-							for(int j=0;j<objects.length;j++) {
-								objects[j] = getValue(context,arguments.get(i+j));
-								if(!((objects[j] instanceof Boolean)||(objects[j] instanceof Number)||(objects[j] instanceof String)))
-									throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
-							}
-							executableArguments = newArguments;
-							executableArguments[i] = objects;
-							break;
-						case STRING:
-							executableArguments[i] = OpcodeUtils.getStringValue(getValue(context,arguments.get(i)));
-							break;
-						default:
-							throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
 						}
+						executableArguments = newArguments;
+						executableArguments[i] = objects;
+						break;
+					case STRING:
+						executableArguments[i] = OpcodeUtils.getStringValue(getValue(yieldingScript.context,arguments.get(i)));
+						break;
+					default:
+						throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
 					}
-					currentOpcode = opcodeImplementation;
-					((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, context, executableArguments);
-					blockTupleIndex++;
+				}
+				currentOpcode = opcodeImplementation;
+				OpcodeSubaction subaction = ((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, yieldingScript.context, executableArguments);
+				yieldingScript.index++;
+				if(subaction!=null) {
+					switch(subaction.getType()) {
+					case YIELD_CHECK:
+						yieldCheck = subaction;
+						return;
+					case SUBSCRIPT:
+						callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), subaction.isSubscriptAtomic()));
+						return;
+					}
 				}
 			}
 			currentOpcode = null;
+			callStack.pop();
+			stop = false;
+			if(callStack.size() == 0) {
+				synchronized(STOP_LOCK) {
+					stopped = true;
+					STOP_LOCK.notifyAll();
+				}
+			}
 		}
 		finally {
-			scriptRunner.thread = null;
+			scriptRunner.runnable = null;
 		}
 	}
 	
@@ -239,7 +258,10 @@ public class ScriptTupleRunnerThread extends Thread {
 			return getBlockTupleValue(context, (BlockTuple)object);
 		}
 		try {
-			Object methodRetval = context.getClass().getMethod("getProcName").invoke(context);
+			Object methodRetval = context
+					.getClass()
+					.getMethod("getProcName")
+					.invoke(context);
 			if(methodRetval.toString().equals("Fill Horizontal Line %s %n %n %n %n")||methodRetval.toString().startsWith("Fill Circle")||methodRetval.toString().startsWith("Init Caves")||methodRetval.toString().startsWith("Make Seams")) {
 				System.out.println("VVVVV "+object);
 				System.out.flush();
@@ -310,6 +332,21 @@ public class ScriptTupleRunnerThread extends Thread {
 		return new ScriptTupleRunnerImpl(this);
 	}
 	
+	private static class YieldingScript{
+		public ScriptContext context;
+		public BlockTuple[] blockTuples;
+		public int index;
+		public boolean isAtomic;
+		
+		public YieldingScript(ScriptContext context, BlockTuple[] blockTuples, boolean isAtomic) {
+			super();
+			this.context = context;
+			this.blockTuples = blockTuples;
+			this.isAtomic = isAtomic;
+			index = 0;
+		}
+	}
+	
 	/**
 	 * A class for helping to encapsulate the thread. (Not completely doable, since the thread is always accessible as Thread.currentThread())
 	 * 
@@ -317,14 +354,14 @@ public class ScriptTupleRunnerThread extends Thread {
 	 *
 	 */
 	private static class ScriptTupleRunnerImpl implements ScriptTupleRunner{
-		private ScriptTupleRunnerThread thread;
+		private ScriptTupleRunnable runnable;
 		
 		/**
-		 * @param thread
+		 * @param runnable
 		 */
-		public ScriptTupleRunnerImpl(ScriptTupleRunnerThread thread) {
+		public ScriptTupleRunnerImpl(ScriptTupleRunnable runnable) {
 			super();
-			this.thread = thread;
+			this.runnable = runnable;
 		}
 
 		/* (non-Javadoc)
@@ -332,7 +369,7 @@ public class ScriptTupleRunnerThread extends Thread {
 		 */
 		@Override
 		public void flagStop() {
-			thread.flagStop();
+			runnable.flagStop();
 		}
 
 		/* (non-Javadoc)
@@ -340,7 +377,12 @@ public class ScriptTupleRunnerThread extends Thread {
 		 */
 		@Override
 		public boolean isStopFlagged() {
-			return thread.stop;
+			return runnable.stop;
+		}
+
+		@Override
+		public boolean isStopped() {
+			return runnable.stopped;
 		}
 
 		/* (non-Javadoc)
@@ -348,13 +390,12 @@ public class ScriptTupleRunnerThread extends Thread {
 		 */
 		@Override
 		public Opcode getOpcode(BlockTuple blockTuple) {
-			return ScriptTupleRunnerThread.getOpcode(blockTuple);
+			return ScriptTupleRunnable.getOpcode(blockTuple);
 		}
 
 		@Override
 		public ScriptContext getContext() {
-			// TODO Auto-generated method stub
-			return thread.scriptTuple.getContext();
+			return runnable.scriptTuple.getContext();
 		}
 
 		/* (non-Javadoc)
@@ -362,31 +403,7 @@ public class ScriptTupleRunnerThread extends Thread {
 		 */
 		@Override
 		public Opcode getCurrentOpcode() {
-			return thread.currentOpcode;
-		}
-
-		/* (non-Javadoc)
-		 * @see com.shtick.utils.scratch.runner.core.ScriptTupleRunner#isAtomic()
-		 */
-		@Override
-		public boolean isAtomic() {
-			return thread.isAtomic;
-		}
-
-		/* (non-Javadoc)
-		 * @see com.shtick.utils.scratch.runner.core.ScriptTupleRunner#join(long, int)
-		 */
-		@Override
-		public void join(long millis, int nanos) throws InterruptedException {
-			thread.join(millis,nanos);
-		}
-
-		/* (non-Javadoc)
-		 * @see com.shtick.utils.scratch.runner.core.ScriptTupleRunner#join()
-		 */
-		@Override
-		public void join() throws InterruptedException {
-			thread.join();
+			return runnable.currentOpcode;
 		}
 	}
 }

@@ -13,6 +13,7 @@ import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineListener;
 import javax.swing.SwingUtilities;
 
+import com.shtick.utils.scratch.runner.core.SoundMonitor;
 import com.shtick.utils.scratch.runner.core.StageListener;
 import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
@@ -20,16 +21,13 @@ import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.core.elements.Stage;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
-import com.shtick.utils.scratch.runner.impl.ScriptTupleRunnerThread;
-import com.shtick.utils.scratch.runner.impl.ThreadTaskQueue;
+import com.shtick.utils.scratch.runner.impl.ScriptTupleThread;
 
 /**
  * @author sean.cox
  *
  */
 public class StageImplementation implements Stage{
-	private final ThreadGroup THREAD_GROUP = new ThreadGroup("ScratchStageThreads"); 
-
 	private String objName;
 	private java.util.List<ScriptTupleImplementation> scripts;
 	private Map<String,SoundImplementation> soundsByName;
@@ -135,57 +133,55 @@ public class StageImplementation implements Stage{
 	 * @see com.shtick.utils.scratch.runner.core.elements.ScriptContext#playSoundByName(java.lang.String, boolean)
 	 */
 	@Override
-	public void playSoundByName(String soundName, boolean block) {
+	public SoundMonitor playSoundByName(String soundName) {
 		if(!soundsByName.containsKey(soundName))
 			throw new IllegalArgumentException("Could not find sound with name, "+soundName+", in "+objName+".");
 		SoundImplementation sound = soundsByName.get(soundName);
 		String resourceName = sound.getResourceName();
-		Clip clip;
 		try {
-			clip = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
-			if(clip==null)
-				return;
+			final Clip clip = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
+			if(clip==null) {
+				return new SoundMonitor() {
+					
+					@Override
+					public boolean isDone() {
+						return true;
+					}
+				};
+			}
 			synchronized(activeClips) {
 				activeClips.add(clip);
-				if(block) {
-					if(clip.isRunning()) {
-						final Object localLock = new Object();
-						synchronized(localLock) {
-							clip.addLineListener(new LineListener() {
-								
-								@Override
-								public void update(LineEvent event) {
-									if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
-										synchronized(localLock) {
-											localLock.notifyAll();
-										}
-									}
-								}
-							});
-							localLock.wait();
-						}
-					}
-					activeClips.remove(clip);
-				}
-				else {
-					clip.addLineListener(new LineListener() {
-						
-						@Override
-						public void update(LineEvent event) {
-							if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
-								synchronized(activeClips) {
-									activeClips.remove(clip);
-								}
+				clip.addLineListener(new LineListener() {
+					
+					@Override
+					public void update(LineEvent event) {
+						if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
+							synchronized(activeClips) {
+								activeClips.remove(clip);
 							}
 						}
-					});
-					if(!clip.isRunning())
-						activeClips.remove(clip);
-				}
+					}
+				});
+				if(!clip.isRunning())
+					activeClips.remove(clip);
 			}
+			return new SoundMonitor() {
+				
+				@Override
+				public boolean isDone() {
+					return !clip.isRunning();
+				}
+			};
 		}
 		catch(Throwable t) {
 			t.printStackTrace();
+			return new SoundMonitor() {
+				
+				@Override
+				public boolean isDone() {
+					return true;
+				}
+			};
 		}
 	}
 
@@ -449,42 +445,19 @@ public class StageImplementation implements Stage{
 	}
 
 	@Override
-	public void stopThreads() {
-		stopAll = true;
+	public void stopScripts() {
 		ScratchRuntimeImplementation.getScratchRuntime().stopAllSounds();
 		synchronized(children) {
 			for(Object child:children) {
 				if(!(child instanceof SpriteImplementation))
 					continue;
-				((SpriteImplementation)child).stopThreads();
+				((SpriteImplementation)child).stopScripts();
 			}
 		}
-		ThreadTaskQueue taskQueue = ScratchRuntimeImplementation.getScratchRuntime().getThreadManagementTaskQueue();
-		taskQueue.invokeLater(()->{
-			// Stop all existing threads.
-			synchronized(THREAD_GROUP) {
-				int activeCount = THREAD_GROUP.activeCount();
-				Thread[] threads = new Thread[activeCount];
-				THREAD_GROUP.enumerate(threads);
-				for(Thread thread:threads) {
-					if(!(thread instanceof ScriptTupleRunnerThread)) {
-						System.err.println("Could not stop a Thread. Unexpected Thread running in Stage thread group: "+thread);
-						continue;
-					}
-					((ScriptTupleRunnerThread)thread).flagStop();
-				}
-			}
-		});
+		ScriptTupleThread scriptTupleThread = ScratchRuntimeImplementation.getScratchRuntime().getScriptTupleThread();
+		scriptTupleThread.stopScriptsByContext(this);
 	}
 	
-	/* (non-Javadoc)
-	 * @see com.shtick.utils.scratch.runner.structure.elements.ScriptContext#getThreadGroup()
-	 */
-	@Override
-	public ThreadGroup getThreadGroup() {
-		return THREAD_GROUP;
-	}
-
 	/* (non-Javadoc)
 	 * @see com.shtick.utils.scratch.runner.core.elements.Stage#addStageListsner(com.shtick.utils.scratch.runner.core.StageListener)
 	 */
@@ -499,21 +472,6 @@ public class StageImplementation implements Stage{
 	@Override
 	public void removeStageListener(StageListener listener) {
 		stageListeners.remove(listener);
-	}
-
-	/**
-	 * This must be called by a Thread that belongs to the context ThreadGroup or a parent ThreadGroup.
-	 * 
-	 * @param script
-	 * @param isAtomic 
-	 * @return A ScriptTupleRunner for the given script, or null, if the app has been stopped.
-	 */
-	public ScriptTupleRunnerThread createRunner(ScriptTupleImplementation script, boolean isAtomic) {
-		synchronized(script.getContext().getThreadGroup()) {
-			if(stopAll)
-				return null;
-			return new ScriptTupleRunnerThread(script.getContext().getThreadGroup(), script, ScratchRuntimeImplementation.getScratchRuntime().getInstructionDelayMillis(),isAtomic);
-		}
 	}
 
 	/**
