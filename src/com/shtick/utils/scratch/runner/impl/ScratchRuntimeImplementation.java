@@ -1177,8 +1177,11 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			if(!(scriptsJson instanceof java.util.List<?>))
 				throw new IOException("scripts not encoded in list");
 			java.util.List<Object> scriptsList = (java.util.List<Object>)scriptsJson;
-			for(Object scriptObject:scriptsList)
-				retval.addScript(parseScriptTuple(retval, scriptObject));
+			for(Object scriptObject:scriptsList) {
+				ScriptTupleImplementation scriptParsed = parseScriptTuple(retval,scriptObject);
+				if(scriptParsed!=null)
+					retval.addScript(scriptParsed);
+			}
 		}
 		
 		if(jsonMap.get("children")!=null) {
@@ -1212,12 +1215,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			i++;
 		}
 		ScriptTupleImplementation retval;
-		try {
-			retval = new ScriptTupleImplementation(context, blockTuples);
-		}
-		catch(InvalidScriptDefinitionException t) {
-			throw new IOException(t);
-		}
 		if(blockTuples.length>0) {
 			BlockTuple maybeHat = blockTuples[0];
 			String opcode = maybeHat.getOpcode();
@@ -1255,13 +1252,18 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 						throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
 					}
 				}
+				try {
+					retval = new ScriptTupleImplementation(context, blockTuples);
+				}
+				catch(InvalidScriptDefinitionException t) {
+					throw new IOException(t);
+				}
 				((OpcodeHat)opcodeImplementation).registerListeningScript(retval, executableArguments);
-			}
-			else {
-				// TODO Why bother remembering the script?
+				return retval;
 			}
 		}
-		return retval;
+		// Why bother remembering the script?
+		return null;
 	}
 	
 	private static Tuple parseTuple(Object blockTupleObject) throws IOException{
@@ -1576,7 +1578,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		}
 		
 		CostumeImplementation[] costumes = null;
-		if(map.get("sounds")!=null) {
+		if(map.get("costumes")!=null) {
 			Object json = map.get("costumes");
 			if(!(json instanceof java.util.List<?>))
 				throw new IOException("costumes not encoded in list");
@@ -1608,8 +1610,11 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			if(!(scriptsJson instanceof java.util.List<?>))
 				throw new IOException("scripts not encoded in list");
 			java.util.List<Object> scriptsList = (java.util.List<Object>)scriptsJson;
-			for(Object scriptObject:scriptsList)
-				retval.addScript(parseScriptTuple(retval,scriptObject));
+			for(Object scriptObject:scriptsList) {
+				ScriptTupleImplementation scriptParsed = parseScriptTuple(retval,scriptObject);
+				if(scriptParsed!=null)
+					retval.addScript(scriptParsed);
+			}
 		}
 		
 		return retval;
