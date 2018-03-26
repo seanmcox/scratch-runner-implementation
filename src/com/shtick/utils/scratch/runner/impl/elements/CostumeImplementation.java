@@ -127,7 +127,9 @@ public class CostumeImplementation implements Costume{
 				if(direction>0)
 					area.transform(AffineTransform.getRotateInstance(direction));
 				Rectangle bounds = area.getBounds();
-				
+				if((bounds.width<=0)||(bounds.height<=0)) 
+					return;
+
 				// TODO Scale the image using a smoother algorithm rather than scaling the Graphics2D. (Current scaling method doesn't look good.)
 				BufferedImage scaledImage = new BufferedImage(bounds.width,bounds.height,BufferedImage.TRANSLUCENT);
 				Graphics2D g2 = (Graphics2D)scaledImage.getGraphics();
@@ -139,7 +141,7 @@ public class CostumeImplementation implements Costume{
 				if(direction>0)
 					g2.rotate(direction);
 				g2.drawImage(this.imageAndArea.image, -this.imageAndArea.rotationCenterX, -this.imageAndArea.rotationCenterY, null);
-				
+
 				imageAndArea = new ImageAndArea(scaledImage,-bounds.x,-bounds.y,area);
 				
 				imagePool.put(key, imageAndArea);
