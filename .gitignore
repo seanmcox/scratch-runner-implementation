@@ -1,5 +1,5 @@
 /bin/**
 /testBin/**
 **/.DS_Store
-/dist/install
-!/dist/install/felix.jar
+/dist/install/scratchrunner.runtime.jar
+
