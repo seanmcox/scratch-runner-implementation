@@ -22,7 +22,9 @@ import org.osgi.framework.BundleListener;
 import org.osgi.framework.Filter;
 import org.osgi.framework.FrameworkListener;
 import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceFactory;
 import org.osgi.framework.ServiceListener;
+import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 
@@ -691,6 +693,17 @@ public class ScriptTupleImplementationTest {
 				
 				@Override
 				public void addBundleListener(BundleListener arg0) {}
+
+				@Override
+				public <S> ServiceRegistration<S> registerService(Class<S> arg0, ServiceFactory<S> arg1,
+						Dictionary<String, ?> arg2) {
+					return null;
+				}
+
+				@Override
+				public <S> ServiceObjects<S> getServiceObjects(ServiceReference<S> arg0) {
+					return null;
+				}
 			});
 		}
 

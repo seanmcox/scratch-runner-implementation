@@ -2,3 +2,5 @@
 /testBin/**
 **/.DS_Store
 /dist/install/scratchrunner.runtime.jar
+/bin/
+/testBin/

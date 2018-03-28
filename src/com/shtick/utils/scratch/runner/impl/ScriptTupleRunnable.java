@@ -4,6 +4,7 @@
 package com.shtick.utils.scratch.runner.impl;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.Stack;
 
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
@@ -37,7 +38,6 @@ import com.shtick.utils.scratch.runner.impl.elements.ScriptTupleImplementation;
 public class ScriptTupleRunnable implements Runnable {
 	private ScriptTupleImplementation scriptTuple;
 	private Opcode currentOpcode = null;
-	private Object[] localVariables;
 	private boolean testResult;
 	
 	private Stack<YieldingScript> callStack = new Stack<>();
@@ -54,8 +54,7 @@ public class ScriptTupleRunnable implements Runnable {
 	 */
 	public ScriptTupleRunnable(ScriptTupleImplementation scriptTuple) {
 		this.scriptTuple = scriptTuple;
-		localVariables = new Object[scriptTuple.getLocalVariableCount()];
-		callStack.push(new YieldingScript(scriptTuple.getContext(), scriptTuple.getResolvedBlockTuples(), false));
+		callStack.push(new YieldingScript(scriptTuple.getContext(), scriptTuple.getResolvedBlockTuples(), scriptTuple.getLocalVariableCount(), false));
 	}
 
 	/* (non-Javadoc)
@@ -111,23 +110,23 @@ public class ScriptTupleRunnable implements Runnable {
 				BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
 				if(tuple instanceof ControlBlockTuple) {
 					if(tuple instanceof TestBlockTuple) {
-						testResult = (Boolean)getValue(yieldingScript.context,tuple.getArguments().get(0));
+						testResult = (Boolean)getValue(yieldingScript.context,tuple.getArguments().get(0),yieldingScript.localVariables);
 						yieldingScript.index++;
 						continue;
 					}
 					else if(tuple instanceof SetLocalVarBlockTuple) {
-						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = tuple.getArguments().get(1);
+						yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = tuple.getArguments().get(1);
 						yieldingScript.index++;
 						continue;
 					}
 					else if(tuple instanceof ChangeLocalVarByBlockTuple) {
-						Number value = OpcodeUtils.getNumericValue(localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()]);
-						Number change = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,tuple.getArguments().get(1)));
+						Number value = OpcodeUtils.getNumericValue(yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()]);
+						Number change = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,tuple.getArguments().get(1),yieldingScript.localVariables));
 						if((value instanceof Double)||(value instanceof Double))
 							value = value.doubleValue()+change.doubleValue();
 						else
 							value = value.longValue()+change.longValue();
-						localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = value;
+						yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = value;
 						yieldingScript.index++;
 						continue;
 					}
@@ -191,16 +190,16 @@ public class ScriptTupleRunnable implements Runnable {
 				for(int i=0;i<types.length;i++) {
 					switch(types[i]) {
 					case BOOLEAN:
-						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i));
+						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables);
 						
 						if(!(executableArguments[i] instanceof Boolean))
 							throw new InvalidScriptDefinitionException("Non-tuple provided where tuple expected.");
 						break;
 					case NUMBER:
-						executableArguments[i] = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,arguments.get(i)));
+						executableArguments[i] = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables));
 						break;
 					case OBJECT:
-						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i));
+						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables);
 						if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
 							throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 						break;
@@ -210,7 +209,7 @@ public class ScriptTupleRunnable implements Runnable {
 							newArguments[j] = arguments.get(j);
 						Object[] objects = new Object[arguments.size()-types.length+1];
 						for(int j=0;j<objects.length;j++) {
-							objects[j] = getValue(yieldingScript.context,arguments.get(i+j));
+							objects[j] = getValue(yieldingScript.context,arguments.get(i+j),yieldingScript.localVariables);
 							if(!((objects[j] instanceof Boolean)||(objects[j] instanceof Number)||(objects[j] instanceof String)))
 								throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 						}
@@ -218,7 +217,7 @@ public class ScriptTupleRunnable implements Runnable {
 						executableArguments[i] = objects;
 						break;
 					case STRING:
-						executableArguments[i] = OpcodeUtils.getStringValue(getValue(yieldingScript.context,arguments.get(i)));
+						executableArguments[i] = OpcodeUtils.getStringValue(getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables));
 						break;
 					default:
 						throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
@@ -233,7 +232,7 @@ public class ScriptTupleRunnable implements Runnable {
 						yieldCheck = subaction;
 						return;
 					case SUBSCRIPT:
-						callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), subaction.isSubscriptAtomic()));
+						callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic()));
 						return;
 					}
 				}
@@ -253,9 +252,9 @@ public class ScriptTupleRunnable implements Runnable {
 		}
 	}
 	
-	private Object getValue(ScriptContext context, Object object) throws InvalidScriptDefinitionException {
+	private Object getValue(ScriptContext context, Object object, Object[] localVariables) throws InvalidScriptDefinitionException {
 		if(object instanceof BlockTuple) {
-			return getBlockTupleValue(context, (BlockTuple)object);
+			return getBlockTupleValue(context, (BlockTuple)object, localVariables);
 		}
 		try {
 			Object methodRetval = context
@@ -271,7 +270,7 @@ public class ScriptTupleRunnable implements Runnable {
 		return object;
 	}
 	
-	private Object getBlockTupleValue(ScriptContext context, BlockTuple tuple) throws InvalidScriptDefinitionException{
+	private Object getBlockTupleValue(ScriptContext context, BlockTuple tuple, Object[] localVariables) throws InvalidScriptDefinitionException{
 		if(tuple instanceof ReadLocalVarBlockTuple)
 			return localVariables[((ReadLocalVarBlockTuple)tuple).getLocalVarIdentifier()];
 		ScriptTupleRunnerImpl scriptRunner = new ScriptTupleRunnerImpl(this);
@@ -288,7 +287,7 @@ public class ScriptTupleRunnable implements Runnable {
 		Object[] executableArguments = new Object[arguments.size()];
 		for(int i=0;i<arguments.size();i++) {
 			if(types[i]!=Opcode.DataType.TUPLE)
-				executableArguments[i] = getValue(context,arguments.get(i));
+				executableArguments[i] = getValue(context,arguments.get(i), localVariables);
 			switch(types[i]) {
 			case BOOLEAN:
 				if(!(executableArguments[i] instanceof Boolean))
@@ -335,14 +334,16 @@ public class ScriptTupleRunnable implements Runnable {
 	private static class YieldingScript{
 		public ScriptContext context;
 		public BlockTuple[] blockTuples;
+		public Object[] localVariables;
 		public int index;
 		public boolean isAtomic;
 		
-		public YieldingScript(ScriptContext context, BlockTuple[] blockTuples, boolean isAtomic) {
+		public YieldingScript(ScriptContext context, BlockTuple[] blockTuples, int localVarCount, boolean isAtomic) {
 			super();
 			this.context = context;
 			this.blockTuples = blockTuples;
 			this.isAtomic = isAtomic;
+			this.localVariables = new Object[localVarCount];
 			index = 0;
 		}
 	}
