@@ -38,6 +38,7 @@ import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 import com.shtick.utils.scratch.runner.core.elements.control.BasicJumpBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.SetLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.bundle.OpcodeTracker;
 import com.shtick.utils.scratch.runner.impl.elements.BlockTupleImplementation;
@@ -408,7 +409,6 @@ public class ScriptTupleImplementationTest {
 			fail(t.getMessage());
 		}
 		
-		// TODO
 		try{ // Forever loop -> skip... sequential jumps reindexing.
 			BlockTuple[] blockTuplesNested = new BlockTuple[] {
 					new BlockTupleImplementation("nop",new ArrayList<>(0))
@@ -459,6 +459,102 @@ public class ScriptTupleImplementationTest {
 			fail(t.getMessage());
 		}
 	}
+
+	/**
+	 * 
+	 */
+	@Test
+	public void testLocalVariableResolution() {
+		AllBadScriptContext context = new AllBadScriptContext();
+		
+		try{ // No local vars.
+			BlockTuple[] blockTuples = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0))
+			};
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			assertEquals(0,tuple.getLocalVariableCount());
+		}
+		catch(InvalidScriptDefinitionException t){
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+		
+		try{ // One local vars.
+			BlockTuple[] blockTuples = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0))
+			};
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			assertEquals(1,tuple.getLocalVariableCount());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
+		}
+		catch(InvalidScriptDefinitionException t){
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+		
+		try{ // Serial local vars.
+			BlockTuple[] blockTuples = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0)),
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0))
+			};
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			assertEquals(1,tuple.getLocalVariableCount());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[3]).getLocalVarIdentifier().intValue());
+		}
+		catch(InvalidScriptDefinitionException t){
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+		
+		try{ // Nested trivial var.
+			BlockTuple[] blockTuplesNested = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0)),
+			};
+			BlockTuple[] blockTuples = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0)),
+					new BlockTupleImplementation("foreverLoop",new ArrayList<>(Arrays.asList(new Object[] {
+							Arrays.asList(blockTuplesNested)})
+							)),
+			};
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			assertEquals(1,tuple.getLocalVariableCount());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[3]).getLocalVarIdentifier().intValue());
+		}
+		catch(InvalidScriptDefinitionException t){
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+		
+		try{ // Nested significant var.
+			BlockTuple[] blockTuplesNested = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0)),
+			};
+			BlockTuple[] blockTuples = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocalNested",new ArrayList<>(Arrays.asList(new Object[] {
+							Arrays.asList(blockTuplesNested)})
+							)),
+			};
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			assertEquals(2,tuple.getLocalVariableCount());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[2]).getLocalVarIdentifier().intValue());
+			assertEquals(1,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[4]).getLocalVarIdentifier().intValue());
+		}
+		catch(InvalidScriptDefinitionException t){
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+	}
 	
 	private static class DumbyOpcodeTracker extends OpcodeTracker{
 		private static HashMap<String,Opcode> opcodes = new HashMap<>(10);
@@ -473,6 +569,8 @@ public class ScriptTupleImplementationTest {
 			opcodes.put("wrapper",new SimpleWrapperOpcode());
 			opcodes.put("foreverLoop",new ForeverLoopOpcode());
 			opcodes.put("skip",new SkipOpcode());
+			opcodes.put("pointlessLocal",new PointlessLocalOpcode());
+			opcodes.put("pointlessLocalNested", new NestedPointlessLocalOpcode());
 		}
 
 		public DumbyOpcodeTracker() {
@@ -736,7 +834,7 @@ public class ScriptTupleImplementationTest {
 
 		@Override
 		public BlockTuple[] execute(List<Object> arguments) {
-			return (BlockTuple[])((java.util.List<?>)arguments.get(0)).toArray();
+			return (BlockTuple[])((java.util.List<?>)arguments.get(0)).toArray(new BlockTuple[] {});
 		}
 	}
 	
@@ -779,6 +877,48 @@ public class ScriptTupleImplementationTest {
 			java.util.List<BlockTuple> script = ((java.util.List<BlockTuple>)arguments.get(0));
 			BlockTuple[] retval = new BlockTuple[script.size()+1];
 			retval[0] = new BasicJumpBlockTuple(retval.length);
+			for(int i=0;i<script.size();i++) {
+				retval[i+1]=script.get(i);
+			}
+			return retval;
+		}
+	}
+	
+	private static class PointlessLocalOpcode implements OpcodeControl{
+		@Override
+		public String getOpcode() {
+			return "pointlessLocal";
+		}
+
+		@Override
+		public DataType[] getArgumentTypes() {
+			return new DataType[] {};
+		}
+
+		@Override
+		public BlockTuple[] execute(List<Object> arguments) {
+			BlockTuple[] retval = new BlockTuple[1];
+			retval[0] = new SetLocalVarBlockTuple(0, 1);
+			return retval;
+		}
+	}
+	
+	private static class NestedPointlessLocalOpcode implements OpcodeControl{
+		@Override
+		public String getOpcode() {
+			return "pointlessLocalNested";
+		}
+
+		@Override
+		public DataType[] getArgumentTypes() {
+			return new DataType[] {DataType.SCRIPT};
+		}
+
+		@Override
+		public BlockTuple[] execute(List<Object> arguments) {
+			java.util.List<BlockTuple> script = ((java.util.List<BlockTuple>)arguments.get(0));
+			BlockTuple[] retval = new BlockTuple[script.size()+1];
+			retval[0] = new SetLocalVarBlockTuple(0, 1);
 			for(int i=0;i<script.size();i++) {
 				retval[i+1]=script.get(i);
 			}
