@@ -268,8 +268,6 @@ public class StageImplementation implements Stage{
 		synchronized(stageListeners) {
 			final int oldIndex = currentCostumeIndex+1;
 			final int newIndex = i+1;
-			if(oldIndex==newIndex)
-				return;
 			currentCostumeIndex = i;
 			for(StageListener listener:stageListeners)
 				listener.sceneChanged(oldIndex, costumes[oldIndex-1].getCostumeName(), newIndex, costumes[newIndex-1].getCostumeName());
@@ -310,7 +308,7 @@ public class StageImplementation implements Stage{
 				return;
 			}
 		}
-		throw new IllegalArgumentException("Costume name not found.");
+		throw new IllegalArgumentException("Costume name not found: "+name);
 	}
 
 	@Override

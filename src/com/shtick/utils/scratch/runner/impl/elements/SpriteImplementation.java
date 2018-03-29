@@ -390,7 +390,9 @@ public class SpriteImplementation implements Sprite{
 				final int newIndex = i+1;
 				final String oldName = costumes[currentCostumeIndex].getCostumeName();
 				final String newName = name;
+				costumes[currentCostumeIndex].unregisterSprite(this);
 				currentCostumeIndex = i;
+				registerWithCostumeImagePool();
 				ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 				SwingUtilities.invokeLater(()->{
 					synchronized(spriteListeners) {
