@@ -170,18 +170,6 @@ public class ScriptTupleRunnable implements Runnable {
 				// TODO Move type/safety checking below to resolveScript. (Opcode value implementations will need to report a return type.)
 				//      The type checking at that point would be less comprehensive, probably, but this seems to be the direction I need to go to improve performance.
 				String opcode = tuple.getOpcode();
-				try {
-					Object methodRetval = yieldingScript
-							.context
-							.getClass()
-							.getMethod("getProcName")
-							.invoke(yieldingScript.context);
-					if(methodRetval.toString().equals("Fill Horizontal Line %s %n %n %n %n")||methodRetval.toString().startsWith("Fill Circle")||methodRetval.toString().startsWith("Init Caves")||methodRetval.toString().startsWith("Make Seams")) {
-						System.out.println("***** "+opcode);
-						System.out.flush();
-					}
-				}
-				catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
 				java.util.List<Object> arguments = tuple.getArguments();
 				ScratchRuntime runtime = ScratchRuntimeImplementation.getScratchRuntime();
 				Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
@@ -253,20 +241,8 @@ public class ScriptTupleRunnable implements Runnable {
 	}
 	
 	private Object getValue(ScriptContext context, Object object, Object[] localVariables) throws InvalidScriptDefinitionException {
-		if(object instanceof BlockTuple) {
+		if(object instanceof BlockTuple)
 			return getBlockTupleValue(context, (BlockTuple)object, localVariables);
-		}
-		try {
-			Object methodRetval = context
-					.getClass()
-					.getMethod("getProcName")
-					.invoke(context);
-			if(methodRetval.toString().equals("Fill Horizontal Line %s %n %n %n %n")||methodRetval.toString().startsWith("Fill Circle")||methodRetval.toString().startsWith("Init Caves")||methodRetval.toString().startsWith("Make Seams")) {
-				System.out.println("VVVVV "+object);
-				System.out.flush();
-			}
-		}
-		catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
 		return object;
 	}
 	
@@ -308,14 +284,6 @@ public class ScriptTupleRunnable implements Runnable {
 			}
 		}
 		Object retval = ((OpcodeValue)opcodeImplementation).execute(runtime, scriptRunner, context, executableArguments);
-		try {
-			Object methodRetval = context.getClass().getMethod("getProcName").invoke(context);
-			if(methodRetval.toString().equals("Fill Horizontal Line %s %n %n %n %n")||methodRetval.toString().startsWith("Fill Circle")||methodRetval.toString().startsWith("Init Caves")||methodRetval.toString().startsWith("Make Seams")) {
-				System.out.println("rrrrr "+retval+" | "+tuple.getOpcode());
-				System.out.flush();
-			}
-		}
-		catch(InvocationTargetException|NoSuchMethodException|IllegalAccessException t) {}
 		return retval;
 	}
 

@@ -134,7 +134,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 */
 	private TreeMap<String, Sprite> spritesByName;
 	private LinkedList<StageMonitorImplementation> stageMonitors = new LinkedList<>();
-	private int instructionDelayMillis;
 
 	private JFrame mainWindow;
 	private int stageWidth;
@@ -189,7 +188,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			return;
 		}
 		String file=null;
-		int millis=10;
 		int stageWidth=480;
 		int stageHeight=360;
 		int frameWidth=-1;
@@ -204,28 +202,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 						System.exit(1);
 					}
 					file = args[i];
-					break;
-				}
-				case "-d":{
-					i++;
-					if(i>=args.length) {
-						System.err.println("No value provided after -d");
-						help();
-						System.exit(1);
-					}
-					try {
-						millis = Integer.parseInt(args[i]);
-					}
-					catch(NumberFormatException t) {
-						System.err.println("Invalid number for -d");
-						help();
-						System.exit(1);
-					}
-					if(millis<0) {
-						System.err.println("Only positive value accepted for -d");
-						help();
-						System.exit(1);
-					}
 					break;
 				}
 				case "-ws":{
@@ -331,7 +307,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		
 		// TODO Implement the fullscreen option. (It's a little more complicated to ensure that the program can exit properly.)
 		// TODO Implement an option that shows and uses the green flag and stop sign.
-		start(millis, new File(file), stageWidth, stageHeight, (frameWidth<0)?stageWidth:frameWidth, (frameHeight<0)?stageHeight:frameHeight, false);
+		start(new File(file), stageWidth, stageHeight, (frameWidth<0)?stageWidth:frameWidth, (frameHeight<0)?stageHeight:frameHeight, false);
 		synchronized(this){
 			while(!EXIT){
 				try{
@@ -345,7 +321,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	}
 	
 	private static void help() {
-		System.out.println("java -jar scratchrunner.jar -f <file> [-d <millis>] [-wf <pixels>] [-hf <pixels>] [-ws <pixels>] [-hs <pixels>]");
+		System.out.println("java -jar scratchrunner.jar -f <file> [-wf <pixels>] [-hf <pixels>] [-ws <pixels>] [-hs <pixels>]");
 		System.out.println("\tRun a scratch program.");
 		System.out.println("java -jar scratchrunner.jar -h");
 		System.out.println("\tPrint out this help information.");
@@ -354,8 +330,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		System.out.println("");
 		System.out.println("Parameters");
 		System.out.println("\t-f:  Scratch project file to run. (Required)");
-		System.out.println("\t-d:  Millisecond delay between instructions. (default = 10)");
-		System.out.println("\t     Not applied to atomic procedures.");
 		System.out.println("\t-wf: Frame/window width. (default = stage width)");
 		System.out.println("\t-hf: Frame/window height. (default = stage height)");
 		System.out.println("\t-ws: Stage width. (default = 480)");
@@ -365,7 +339,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	}
 	
 	/**
-	 * @param instructionDelayMillis 
 	 * @param projectFile 
 	 * @param stageWidth 
 	 * @param stageHeight 
@@ -375,8 +348,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 * @throws IOException 
 	 * 
 	 */
-	public void start(int instructionDelayMillis, File projectFile, int stageWidth, int stageHeight, int frameWidth, int frameHeight, boolean fullscreen) throws IOException{
-		this.instructionDelayMillis = instructionDelayMillis;
+	public void start(File projectFile, int stageWidth, int stageHeight, int frameWidth, int frameHeight, boolean fullscreen) throws IOException{
 		loadProject(projectFile);
 		
 		this.stageWidth = stageWidth;
@@ -387,7 +359,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(fullscreen) {
 			GraphicsDevice graphicsDevice=GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
 			if(!graphicsDevice.isFullScreenSupported()){
-				java.lang.System.out.println("GUI: Full screen is not supported.");
+				System.err.println("GUI: Full screen is not supported.");
 			}
 			else {
 				graphicsDevice.setFullScreenWindow(mainWindow);
@@ -676,13 +648,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			mainWindow.repaint();
 			repaintNeeded = false;
 		}
-	}
-
-	/**
-	 * @return the instructionDelayMillis
-	 */
-	public int getInstructionDelayMillis() {
-		return instructionDelayMillis;
 	}
 	
 
@@ -1470,7 +1435,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	    	t.transform(new DOMSource(node), new StreamResult(sw));
 	    }
 	    catch (TransformerException te) {
-	    	System.out.println("nodeToString Transformer Exception");
+	    	System.err.println("nodeToString Transformer Exception");
 	    }
 	    return sw.toString();
 	}
