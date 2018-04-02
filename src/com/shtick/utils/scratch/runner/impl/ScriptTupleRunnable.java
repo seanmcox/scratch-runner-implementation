@@ -3,7 +3,6 @@
  */
 package com.shtick.utils.scratch.runner.impl;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Stack;
 
@@ -47,6 +46,8 @@ public class ScriptTupleRunnable implements Runnable {
 	private boolean stop = false;
 	private boolean stopped = false;
 
+	private ScriptTupleRunnerImpl scriptRunner;
+
 	/**
 	 * @param threadGroup 
 	 * @param scriptTuple
@@ -54,7 +55,8 @@ public class ScriptTupleRunnable implements Runnable {
 	 */
 	public ScriptTupleRunnable(ScriptTupleImplementation scriptTuple) {
 		this.scriptTuple = scriptTuple;
-		callStack.push(new YieldingScript(scriptTuple.getContext(), scriptTuple.getResolvedBlockTuples(), scriptTuple.getLocalVariableCount(), false));
+		callStack.push(new YieldingScript(scriptTuple.getContext(), scriptTuple.getResolvedBlockTuples(), scriptTuple.getLocalVariableCount(), false, Arrays.toString(scriptTuple.getBlockTuples().get(0).toArray())));
+		this.scriptRunner = new ScriptTupleRunnerImpl(this);
 	}
 
 	/* (non-Javadoc)
@@ -68,6 +70,16 @@ public class ScriptTupleRunnable implements Runnable {
 		catch(InvalidScriptDefinitionException t) {
 			throw new RuntimeException(t);
 		}
+	}
+	
+	public String getTaskDescription() {
+		String retval = scriptTuple.getContext().getObjName();
+		int i = 0;
+		for(YieldingScript task:callStack) {
+			i++;
+			retval+=""+i+": "+task.description+" "+task.isAtomic+" "+task.index+"/"+task.blockTuples.length+"\n";
+		}
+		return retval.trim();
 	}
 	
 	/**
@@ -103,9 +115,8 @@ public class ScriptTupleRunnable implements Runnable {
 		}
 		
 		// Run the next script segment.
-		YieldingScript yieldingScript = callStack.peek();
-		ScriptTupleRunnerImpl scriptRunner = new ScriptTupleRunnerImpl(this);
-		try {
+		while(callStack.size()>0) {
+			YieldingScript yieldingScript = callStack.peek();
 			while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stop)) {
 				BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
 				if(tuple instanceof ControlBlockTuple) {
@@ -217,25 +228,31 @@ public class ScriptTupleRunnable implements Runnable {
 				if(subaction!=null) {
 					switch(subaction.getType()) {
 					case YIELD_CHECK:
-						yieldCheck = subaction;
-						return;
+						if(!yieldingScript.isAtomic) {
+							yieldCheck = subaction;
+							return;
+						}
 					case SUBSCRIPT:
-						callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic()));
-						return;
+						callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), currentOpcode.getOpcode()+" "+Arrays.toString(executableArguments)));
+						if(!yieldingScript.isAtomic) {
+							return;
+						}
+						yieldingScript = callStack.peek();
 					}
 				}
 			}
 			currentOpcode = null;
 			callStack.pop();
 			stop = false;
-			if(callStack.size() == 0) {
-				synchronized(STOP_LOCK) {
-					stopped = true;
-					STOP_LOCK.notifyAll();
-				}
+			if(callStack.size() > 0) {
+				yieldingScript = callStack.peek();
+				if(!yieldingScript.isAtomic)
+					return;
 			}
 		}
-		finally {
+		synchronized(STOP_LOCK) {
+			stopped = true;
+			STOP_LOCK.notifyAll();
 			scriptRunner.runnable = null;
 		}
 	}
@@ -249,7 +266,6 @@ public class ScriptTupleRunnable implements Runnable {
 	private Object getBlockTupleValue(ScriptContext context, BlockTuple tuple, Object[] localVariables) throws InvalidScriptDefinitionException{
 		if(tuple instanceof ReadLocalVarBlockTuple)
 			return localVariables[((ReadLocalVarBlockTuple)tuple).getLocalVarIdentifier()];
-		ScriptTupleRunnerImpl scriptRunner = new ScriptTupleRunnerImpl(this);
 		java.util.List<Object> arguments = tuple.getArguments();
 		ScratchRuntime runtime = ScratchRuntimeImplementation.getScratchRuntime();
 		Opcode opcodeImplementation = getOpcode(tuple);
@@ -296,7 +312,7 @@ public class ScriptTupleRunnable implements Runnable {
 	 * @return A ScriptTupleRunner object for accessing this Thread.
 	 */
 	public ScriptTupleRunner getScriptTupleRunner() {
-		return new ScriptTupleRunnerImpl(this);
+		return scriptRunner;
 	}
 	
 	private static class YieldingScript{
@@ -305,13 +321,15 @@ public class ScriptTupleRunnable implements Runnable {
 		public Object[] localVariables;
 		public int index;
 		public boolean isAtomic;
+		public String description;
 		
-		public YieldingScript(ScriptContext context, BlockTuple[] blockTuples, int localVarCount, boolean isAtomic) {
+		public YieldingScript(ScriptContext context, BlockTuple[] blockTuples, int localVarCount, boolean isAtomic, String description) {
 			super();
 			this.context = context;
 			this.blockTuples = blockTuples;
 			this.isAtomic = isAtomic;
 			this.localVariables = new Object[localVarCount];
+			this.description = description;
 			index = 0;
 		}
 	}
@@ -338,7 +356,8 @@ public class ScriptTupleRunnable implements Runnable {
 		 */
 		@Override
 		public void flagStop() {
-			runnable.flagStop();
+			if(runnable!=null)
+				runnable.flagStop();
 		}
 
 		/* (non-Javadoc)
@@ -346,12 +365,12 @@ public class ScriptTupleRunnable implements Runnable {
 		 */
 		@Override
 		public boolean isStopFlagged() {
-			return runnable.stop;
+			return (runnable!=null)||runnable.stop;
 		}
 
 		@Override
 		public boolean isStopped() {
-			return runnable.stopped;
+			return (runnable==null)||runnable.stopped;
 		}
 
 		/* (non-Javadoc)
