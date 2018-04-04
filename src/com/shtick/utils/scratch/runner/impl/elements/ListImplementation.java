@@ -6,10 +6,8 @@ package com.shtick.utils.scratch.runner.impl.elements;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import javax.swing.SwingUtilities;
-
-import com.shtick.utils.scratch.runner.core.ListListener;
 import com.shtick.utils.scratch.runner.core.elements.List;
+import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 
 /**
  * @author sean.cox
@@ -23,7 +21,6 @@ public class ListImplementation implements List{
 	private Double width;
 	private Double height;
 	private Boolean visible;
-	private LinkedList<ListListener> listeners = new LinkedList<>();
 	
 	/**
 	 * @param listName
@@ -97,13 +94,9 @@ public class ListImplementation implements List{
 	@Override
 	public void deleteItem(int index) {
 		synchronized(contents) {
-			final Object item = contents.remove(index-1);
-			SwingUtilities.invokeLater(()->{
-				synchronized(listeners) {
-					for(ListListener listener:listeners)
-						listener.itemAdded(index,item,ListImplementation.this);
-				}
-			});
+			contents.remove(index-1);
+			if(visible)
+				ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 		}
 	}
 
@@ -113,14 +106,9 @@ public class ListImplementation implements List{
 	@Override
 	public void setItem(Object item, int index) {
 		synchronized(contents) {
-			final Object oldValue = contents.remove(index-1);
-			contents.add(index-1, item);
-			SwingUtilities.invokeLater(()->{
-				synchronized(listeners) {
-					for(ListListener listener:listeners)
-						listener.itemUpdated(index,oldValue,item,ListImplementation.this);
-				}
-			});
+			contents.set(index-1, item);
+			if(visible)
+				ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 		}		
 	}
 
@@ -131,12 +119,8 @@ public class ListImplementation implements List{
 	public void addItem(Object item, int index) {
 		synchronized(contents) {
 			contents.add(index-1, item);
-			SwingUtilities.invokeLater(()->{
-				synchronized(listeners) {
-					for(ListListener listener:listeners)
-						listener.itemAdded(index,item,ListImplementation.this);
-				}
-			});
+			if(visible)
+				ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 		}
 	}
 
@@ -144,13 +128,8 @@ public class ListImplementation implements List{
 	public synchronized void addItem(Object item) {
 		synchronized(contents) {
 			contents.add(item);
-			final int index = contents.size();
-			SwingUtilities.invokeLater(()->{
-				synchronized(listeners) {
-					for(ListListener listener:listeners)
-						listener.itemAdded(index,item,ListImplementation.this);
-				}
-			});
+			if(visible)
+				ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 		}
 	}
 
@@ -209,25 +188,5 @@ public class ListImplementation implements List{
 	@Override
 	protected Object clone() throws CloneNotSupportedException {
 		return new ListImplementation(this);
-	}
-
-	/* (non-Javadoc)
-	 * @see com.shtick.utils.scratch.runner.core.elements.List#addListListener(com.shtick.utils.scratch.runner.core.ListListener)
-	 */
-	@Override
-	public void addListListener(ListListener listener) {
-		synchronized(listeners) {
-			listeners.add(listener);
-		}
-	}
-
-	/* (non-Javadoc)
-	 * @see com.shtick.utils.scratch.runner.core.elements.List#removeListListener(com.shtick.utils.scratch.runner.core.ListListener)
-	 */
-	@Override
-	public void removeListListener(ListListener listener) {
-		synchronized(listeners) {
-			listeners.add(listener);
-		}
 	}
 }

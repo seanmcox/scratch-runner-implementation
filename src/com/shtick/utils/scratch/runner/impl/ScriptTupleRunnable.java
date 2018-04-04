@@ -72,14 +72,18 @@ public class ScriptTupleRunnable implements Runnable {
 		}
 	}
 	
-	public String getTaskDescription() {
+	/**
+	 * 
+	 * @return A String describing where the process is currently, with newlines separating stack layers.
+	 */
+	public String getStackTrace() {
 		String retval = scriptTuple.getContext().getObjName();
 		int i = 0;
 		for(YieldingScript task:callStack) {
 			i++;
-			retval+=""+i+": "+task.description+" "+task.isAtomic+" "+task.index+"/"+task.blockTuples.length+"\n";
+			retval+="\n"+i+": "+task.description+" "+task.index+"/"+task.blockTuples.length+" "+((task.index>=task.blockTuples.length)?"Done":task.blockTuples[task.index].getOpcode())+" "+task.isAtomic;
 		}
-		return retval.trim();
+		return retval;
 	}
 	
 	/**
@@ -392,6 +396,11 @@ public class ScriptTupleRunnable implements Runnable {
 		@Override
 		public Opcode getCurrentOpcode() {
 			return runnable.currentOpcode;
+		}
+
+		@Override
+		public String getStackTrace() {
+			return runnable.getStackTrace();
 		}
 	}
 }
