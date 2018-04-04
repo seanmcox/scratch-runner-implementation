@@ -71,7 +71,7 @@ public class ListMonitor extends MonitorComponent{
 			g2.drawString(""+(i+1), 10, currentY+lineHeight);
 			
 			g2.setColor(Color.WHITE);
-			g2.drawString(""+(i+1), 30, currentY+lineHeight);
+			g2.drawString(""+values[i], 30, currentY+lineHeight);
 			currentY+=lineHeight;
 		}
 		currentY+=lineHeight;
