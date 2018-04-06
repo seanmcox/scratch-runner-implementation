@@ -28,12 +28,17 @@ public class ScriptTupleThread {
 	private Thread mainThread = new Thread(new MainProcess());
 	private boolean stopFlagged = false;
 	
-	/**
-	 * 
-	 */
 	public ScriptTupleThread() {
-		mainThread.setDaemon(true);
-		mainThread.start();
+	}
+
+	/**
+	 * Starts the script execution thread if it is not already running.
+	 */
+	public void start() {
+		if(!mainThread.isAlive()) {
+			mainThread.setDaemon(true);
+			mainThread.start();
+		}
 	}
 	
 	/**
