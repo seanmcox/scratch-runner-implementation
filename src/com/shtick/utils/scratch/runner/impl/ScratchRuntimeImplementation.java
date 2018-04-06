@@ -521,6 +521,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			OpcodeHat hat = (OpcodeHat)opcode;
 			hat.applicationStarted(this);
 		}
+		SCRIPT_TUPLE_THREAD.start();
 	}
 
 	/**
