@@ -79,9 +79,11 @@ public class ScriptTupleRunnable implements Runnable {
 	public String getStackTrace() {
 		String retval = scriptTuple.getContext().getObjName();
 		int i = 0;
-		for(YieldingScript task:callStack) {
-			i++;
-			retval+="\n"+i+": "+task.description+" "+task.index+"/"+task.blockTuples.length+" "+((task.index>=task.blockTuples.length)?"Done":task.blockTuples[task.index].getOpcode())+" "+task.isAtomic;
+		synchronized(callStack) {
+			for(YieldingScript task:callStack) {
+				i++;
+				retval+="\n"+i+": "+task.description+" "+task.index+"/"+task.blockTuples.length+" "+((task.index>=task.blockTuples.length)?"Done":task.blockTuples[task.index].getOpcode())+" "+task.isAtomic;
+			}
 		}
 		return retval;
 	}
@@ -122,6 +124,8 @@ public class ScriptTupleRunnable implements Runnable {
 		while(callStack.size()>0) {
 			YieldingScript yieldingScript = callStack.peek();
 			while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stop)) {
+				if(yieldingScript.debugFlag)
+					System.out.println("Index: "+yieldingScript.index+"/"+yieldingScript.blockTuples.length);
 				BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
 				if(tuple instanceof ControlBlockTuple) {
 					if(tuple instanceof TestBlockTuple) {
@@ -227,6 +231,10 @@ public class ScriptTupleRunnable implements Runnable {
 					}
 				}
 				currentOpcode = opcodeImplementation;
+				if(yieldingScript.debugFlag) {
+					String description = currentOpcode.getOpcode()+" "+Arrays.toString((Object[])executableArguments);
+					System.out.println("</>"+description);
+				}
 				OpcodeSubaction subaction = ((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, yieldingScript.context, executableArguments);
 				yieldingScript.index++;
 				if(subaction!=null) {
@@ -237,7 +245,10 @@ public class ScriptTupleRunnable implements Runnable {
 							return;
 						}
 					case SUBSCRIPT:
-						callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), currentOpcode.getOpcode()+" "+Arrays.toString(executableArguments)));
+						String description = currentOpcode.getOpcode()+" "+executableArguments[0]+" "+Arrays.toString((Object[])executableArguments[1]);
+						synchronized(callStack){
+							callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), description));
+						}
 						if(!yieldingScript.isAtomic) {
 							return;
 						}
@@ -246,7 +257,9 @@ public class ScriptTupleRunnable implements Runnable {
 				}
 			}
 			currentOpcode = null;
-			callStack.pop();
+			synchronized(callStack){
+				callStack.pop();
+			}
 			stop = false;
 			if(callStack.size() > 0) {
 				yieldingScript = callStack.peek();
@@ -326,6 +339,7 @@ public class ScriptTupleRunnable implements Runnable {
 		public int index;
 		public boolean isAtomic;
 		public String description;
+		public boolean debugFlag = false;
 		
 		public YieldingScript(ScriptContext context, BlockTuple[] blockTuples, int localVarCount, boolean isAtomic, String description) {
 			super();

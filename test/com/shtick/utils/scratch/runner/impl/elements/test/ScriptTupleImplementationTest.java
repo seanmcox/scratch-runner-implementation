@@ -40,7 +40,10 @@ import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 import com.shtick.utils.scratch.runner.core.elements.control.BasicJumpBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.LocalVarBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.ReadLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.SetLocalVarBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.TestBlockTuple;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.bundle.OpcodeTracker;
 import com.shtick.utils.scratch.runner.impl.elements.BlockTupleImplementation;
@@ -466,7 +469,7 @@ public class ScriptTupleImplementationTest {
 	 * 
 	 */
 	@Test
-	public void testLocalVariableResolution() {
+	public void testLocalVariableBlockResolution() {
 		AllBadScriptContext context = new AllBadScriptContext();
 		
 		try{ // No local vars.
@@ -550,7 +553,38 @@ public class ScriptTupleImplementationTest {
 			assertEquals(2,tuple.getLocalVariableCount());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[2]).getLocalVarIdentifier().intValue());
-			assertEquals(1,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[4]).getLocalVarIdentifier().intValue());
+			assertEquals(1,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[5]).getLocalVarIdentifier().intValue());
+		}
+		catch(InvalidScriptDefinitionException t){
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+	}
+
+	/**
+	 * 
+	 */
+	@Test
+	public void testLocalVariableValueBlockResolution() {
+		AllBadScriptContext context = new AllBadScriptContext();
+		try{ // Nested significant var.
+			BlockTuple[] blockTuplesNested = new BlockTuple[] {
+					new BlockTupleImplementation("nop",new ArrayList<>(0)),
+					new BlockTupleImplementation("pointlessLocalNested",new ArrayList<>(Arrays.asList(new Object[] {
+							new ArrayList<>(0)
+					}))),
+			};
+			BlockTuple[] blockTuples = new BlockTuple[] {
+					new BlockTupleImplementation("pointlessLocalNested",new ArrayList<>(Arrays.asList(new Object[] {
+							Arrays.asList(blockTuplesNested)
+							}))),
+			};
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			assertEquals(2,tuple.getLocalVariableCount());
+			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[0]).getLocalVarIdentifier().intValue());
+			assertEquals(0,((ReadLocalVarBlockTuple)((TestBlockTuple)tuple.getResolvedBlockTuples()[1]).getArguments().get(0)).getLocalVarIdentifier().intValue());
+			assertEquals(1,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[3]).getLocalVarIdentifier().intValue());
+			assertEquals(1,((ReadLocalVarBlockTuple)((TestBlockTuple)tuple.getResolvedBlockTuples()[4]).getArguments().get(0)).getLocalVarIdentifier().intValue());
 		}
 		catch(InvalidScriptDefinitionException t){
 			t.printStackTrace();
@@ -930,10 +964,11 @@ public class ScriptTupleImplementationTest {
 		@Override
 		public BlockTuple[] execute(List<Object> arguments) {
 			java.util.List<BlockTuple> script = ((java.util.List<BlockTuple>)arguments.get(0));
-			BlockTuple[] retval = new BlockTuple[script.size()+1];
+			BlockTuple[] retval = new BlockTuple[script.size()+2];
 			retval[0] = new SetLocalVarBlockTuple(0, 1);
+			retval[1] = new TestBlockTuple(new ReadLocalVarBlockTuple(0));
 			for(int i=0;i<script.size();i++) {
-				retval[i+1]=script.get(i);
+				retval[i+2]=script.get(i);
 			}
 			return retval;
 		}
