@@ -6,6 +6,7 @@ package com.shtick.utils.scratch.runner.impl.elements;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
@@ -20,6 +21,8 @@ import com.shtick.utils.scratch.runner.core.elements.ScriptTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.ControlBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.JumpBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.LocalVarBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.ReadLocalVarBlockTuple;
+import com.shtick.utils.scratch.runner.core.elements.control.TestBlockTuple;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 
 /**
@@ -104,6 +107,34 @@ public class ScriptTupleImplementation implements ScriptTuple {
 					localVariableMap.put(varIndex, largestRemappedLocalVar);
 				}
 				((LocalVarBlockTuple)blockTuple).setLocalVarIdentifier(localVariableMap.get(varIndex));
+			}
+			else if(blockTuple instanceof TestBlockTuple) {
+				HashSet<LocalVarBlockTuple> localVarBlockTuples = new HashSet<>();
+				HashSet<BlockTuple> newBlockTuples = new HashSet<>();
+				HashSet<BlockTuple> oldBlockTuples = new HashSet<>();
+				oldBlockTuples.add(blockTuple);
+				while(oldBlockTuples.size()>0) {
+					for(BlockTuple oldBlockTuple:oldBlockTuples) {
+						for(Object argument:oldBlockTuple.getArguments()) {
+							if(argument instanceof ReadLocalVarBlockTuple) {
+								localVarBlockTuples.add((ReadLocalVarBlockTuple)argument);
+							}
+							else if(argument instanceof BlockTuple) {
+								newBlockTuples.add((BlockTuple)argument);
+							}
+						}
+					}
+					oldBlockTuples = newBlockTuples;
+					newBlockTuples = new HashSet<>();
+				}
+				for(LocalVarBlockTuple localVarBlockTuple:localVarBlockTuples) {
+					int varIndex = localVarBlockTuple.getLocalVarIdentifier();
+					if(!localVariableMap.containsKey(varIndex)) {
+						largestRemappedLocalVar++;
+						localVariableMap.put(varIndex, largestRemappedLocalVar);
+					}
+					localVarBlockTuple.setLocalVarIdentifier(localVariableMap.get(varIndex));
+				}
 			}
 		}
 		int largestRemappedLocalVarIncludingChildren = largestRemappedLocalVar;
