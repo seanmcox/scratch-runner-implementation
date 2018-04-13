@@ -134,7 +134,7 @@ public class ScriptTupleRunnable implements Runnable {
 						continue;
 					}
 					else if(tuple instanceof SetLocalVarBlockTuple) {
-						yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = tuple.getArguments().get(1);
+						yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = getValue(yieldingScript.context,tuple.getArguments().get(1),yieldingScript.localVariables);
 						yieldingScript.index++;
 						continue;
 					}
