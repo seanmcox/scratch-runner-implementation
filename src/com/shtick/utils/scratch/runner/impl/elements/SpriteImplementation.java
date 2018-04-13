@@ -213,7 +213,7 @@ public class SpriteImplementation implements Sprite{
 	@Override
 	public SoundMonitor playSoundByName(String soundName) {
 		if(!soundsByName.containsKey(soundName))
-			throw new IllegalArgumentException("Could not find sound with name, "+soundName+", in "+objName+".");
+			return null;
 		SoundImplementation sound = soundsByName.get(soundName);
 		String resourceName = sound.getResourceName();
 		try {
