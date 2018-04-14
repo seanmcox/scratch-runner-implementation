@@ -320,14 +320,14 @@ public class SpriteImplementation implements Sprite{
 	}
 	
 	@Override
-	public void setCurrentCostumeIndex(int i) {
+	public boolean setCurrentCostumeIndex(int i) {
 		synchronized(LOCK) {
 			if(currentCostumeIndex == i)
-				return;
+				return true;
 			if(i<0)
-				throw new IndexOutOfBoundsException();
+				return false;
 			if(i>=costumes.length)
-				throw new IndexOutOfBoundsException();
+				return false;
 			final int oldIndex = currentCostumeIndex+1;
 			final int newIndex = i+1;
 			final String oldName = costumes[currentCostumeIndex].getCostumeName();
@@ -343,6 +343,7 @@ public class SpriteImplementation implements Sprite{
 				}
 			});
 		}
+		return true;
 	}
 	
 	private void registerWithCostumeImagePool() {
@@ -379,13 +380,13 @@ public class SpriteImplementation implements Sprite{
 	 * @see com.shtick.utils.scratch.runner.core.elements.Sprite#setCostumeByName(java.lang.String)
 	 */
 	@Override
-	public void setCostumeByName(String name) {
+	public boolean setCostumeByName(String name) {
 		if(name==null)
-			throw new IllegalArgumentException("Null costume name not allowed.");
+			return false;
 		for(int i=0;i<costumes.length;i++) {
 			if(name.equals(costumes[i].getCostumeName())) {
 				if(i==currentCostumeIndex)
-					return;
+					return true;
 				final int oldIndex = currentCostumeIndex+1;
 				final int newIndex = i+1;
 				final String oldName = costumes[currentCostumeIndex].getCostumeName();
@@ -400,10 +401,10 @@ public class SpriteImplementation implements Sprite{
 							listener.costumeChanged(oldIndex,oldName,newIndex,newName);
 					}
 				});
-				return;
+				return true;
 			}
 		}
-		System.err.println("WARNING: Costume name, "+name+", not found for sprite, "+objName);
+		return false;
 	}
 	
 	/**
