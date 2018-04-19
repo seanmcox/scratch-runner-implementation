@@ -245,13 +245,26 @@ public class CostumeImplementation implements Costume{
 		}
 	}
 	
+	/**
+	 * An object which contains both an image and some associated meta-data.
+	 * 
+	 * @author scox
+	 *
+	 */
 	public class ImageAndArea {
 		/**
 		 * A BufferedImage.
 		 */
 		public BufferedImage image;
 
+		/**
+		 * The x-coordinate of the image's center of rotation.
+		 */
 		public int rotationCenterX;
+
+		/**
+		 * The y-coordinate of the image's center of rotation.
+		 */
 		public int rotationCenterY;
 		
 		/**
@@ -265,12 +278,25 @@ public class CostumeImplementation implements Costume{
 		 */
 		private Area area=null;
 
+		/**
+		 * 
+		 * @param image
+		 * @param rotationCenterX
+		 * @param rotationCenterY
+		 */
 		public ImageAndArea(BufferedImage image, int rotationCenterX, int rotationCenterY) {
 			this.image = image;
 			this.rotationCenterX = rotationCenterX;
 			this.rotationCenterY = rotationCenterY;
 		}
 		
+		/**
+		 * 
+		 * @param image
+		 * @param rotationCenterX
+		 * @param rotationCenterY
+		 * @param area
+		 */
 		public ImageAndArea(BufferedImage image, int rotationCenterX, int rotationCenterY, Area area) {
 			super();
 			this.image = image;

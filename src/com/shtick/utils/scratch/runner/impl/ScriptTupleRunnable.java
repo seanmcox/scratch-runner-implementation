@@ -43,7 +43,8 @@ public class ScriptTupleRunnable implements Runnable {
 	private OpcodeSubaction yieldCheck = null;
 
 	private final Object STOP_LOCK = new Object();
-	private boolean stop = false;
+	private boolean stopProcedure = false;
+	private boolean totalStop = false;
 	private boolean stopped = false;
 
 	private ScriptTupleRunnerImpl scriptRunner;
@@ -90,9 +91,11 @@ public class ScriptTupleRunnable implements Runnable {
 	
 	/**
 	 * 
+	 * @param totalStop If true, then the entire call stack is aborted. Otherwise, only the top procedure in the stack aborts and returns.
 	 */
-	public void flagStop() {
-		stop=true;
+	public void flagStop(boolean totalStop) {
+		this.totalStop = totalStop;
+		stopProcedure=true;
 	}
 	
 	/**
@@ -121,9 +124,9 @@ public class ScriptTupleRunnable implements Runnable {
 		}
 		
 		// Run the next script segment.
-		while(callStack.size()>0) {
+		while((callStack.size()>0)&&(!totalStop)) {
 			YieldingScript yieldingScript = callStack.peek();
-			while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stop)) {
+			while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stopProcedure)) {
 				if(yieldingScript.debugFlag)
 					System.out.println("Index: "+yieldingScript.index+"/"+yieldingScript.blockTuples.length);
 				BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
@@ -247,7 +250,8 @@ public class ScriptTupleRunnable implements Runnable {
 					case SUBSCRIPT:
 						String description = currentOpcode.getOpcode()+" "+executableArguments[0]+" "+Arrays.toString((Object[])executableArguments[1]);
 						synchronized(callStack){
-							callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), description));
+							if(!stopProcedure)
+								callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), description));
 						}
 						if(!yieldingScript.isAtomic) {
 							return;
@@ -260,7 +264,7 @@ public class ScriptTupleRunnable implements Runnable {
 			synchronized(callStack){
 				callStack.pop();
 			}
-			stop = false;
+			stopProcedure = false;
 			if(callStack.size() > 0) {
 				yieldingScript = callStack.peek();
 				if(!yieldingScript.isAtomic)
@@ -375,7 +379,7 @@ public class ScriptTupleRunnable implements Runnable {
 		@Override
 		public void flagStop() {
 			if(runnable!=null)
-				runnable.flagStop();
+				runnable.flagStop(false);
 		}
 
 		/* (non-Javadoc)
@@ -383,7 +387,7 @@ public class ScriptTupleRunnable implements Runnable {
 		 */
 		@Override
 		public boolean isStopFlagged() {
-			return (runnable!=null)||runnable.stop;
+			return (runnable!=null)||runnable.stopProcedure;
 		}
 
 		@Override

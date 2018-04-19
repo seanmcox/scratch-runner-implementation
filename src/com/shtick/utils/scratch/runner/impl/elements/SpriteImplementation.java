@@ -1094,6 +1094,7 @@ public class SpriteImplementation implements Sprite{
 			return;
 		}
 		// Set clone scripts.
+		stopScripts();
 		synchronized(LOCK) {
 			costumes[currentCostumeIndex].unregisterSprite(this);
 			for(ScriptTupleImplementation script:scripts) {
@@ -1103,8 +1104,9 @@ public class SpriteImplementation implements Sprite{
 					String opcode = maybeHat.getOpcode();
 					java.util.List<Object> arguments = maybeHat.getArguments();
 					Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
-					if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat))
+					if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 						((OpcodeHat)opcodeImplementation).unregisterListeningScript(script, arguments.toArray(new Object[arguments.size()]));
+					}
 				}
 			}
 		}
@@ -1112,7 +1114,6 @@ public class SpriteImplementation implements Sprite{
 			cloneOf.clones.remove(this);
 		}
 		ScratchRuntimeImplementation.getScratchRuntime().deleteClone(this);
-		stopScripts();
 		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 	}
 
