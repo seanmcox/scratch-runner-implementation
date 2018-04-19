@@ -27,10 +27,8 @@ public class ScriptTupleThread {
 	private HashSet<ScriptContext> contextsToStop = new HashSet<>();
 	private Thread mainThread = new Thread(new MainProcess());
 	private boolean stopFlagged = false;
+	private ScriptTupleRunnable currentlyRunning;
 	
-	public ScriptTupleThread() {
-	}
-
 	/**
 	 * Starts the script execution thread if it is not already running.
 	 */
@@ -49,6 +47,11 @@ public class ScriptTupleThread {
 		return Thread.currentThread()==mainThread;
 	}
 	
+	/**
+	 * 
+	 * @param scriptTuple
+	 * @return Adds the given scriptTuple to the list of scripts to run.
+	 */
 	public ScriptTupleRunner startScriptTuple(ScriptTupleImplementation scriptTuple) {
 		synchronized(scriptsToStart) {
 			// A script added here will be terminated if it is already running. Eliminate the ambiguity of intention by overriding any current stop order.
@@ -59,14 +62,25 @@ public class ScriptTupleThread {
 		}
 	}
 	
+	/**
+	 * Stops the specified script. (The entire call stack is aborted.)
+	 * 
+	 * @param scriptTuple
+	 */
 	public void stopScript(ScriptTupleImplementation scriptTuple) {
 		synchronized(scriptsToStart) {
 			// A script set to start/restart will no longer be expected to start.
 			scriptsToStart.remove(scriptTuple);
 			scriptsToStop.add(scriptTuple);
+			ScriptTupleRunnable runnable = taskQueue.get(scriptTuple);
+			if(runnable!=null)
+				runnable.flagStop(true);
 		}
 	}
 	
+	/**
+	 * Stops all currently running scripts.
+	 */
 	public void stopAllScripts() {
 		stopFlagged = true;
 		synchronized(scriptsToStart) {
@@ -75,9 +89,19 @@ public class ScriptTupleThread {
 		}
 	}
 	
+	/**
+	 * Stops all scripts running under the given ScriptContext.
+	 * 
+	 * @param context A ScriptContext
+	 */
 	public void stopScriptsByContext(ScriptContext context) {
 		synchronized(scriptsToStart) {
 			contextsToStop.add(context);
+			for(ScriptTupleImplementation script:taskQueue.keySet()) {
+				if(script.getContext()==context) {
+					taskQueue.get(script).flagStop(true);
+				}
+			}
 		}
 	}
 	
@@ -111,11 +135,15 @@ public class ScriptTupleThread {
 				Iterator<ScriptTupleImplementation> iter = keySet.iterator();
 				while(iter.hasNext()&&!stopFlagged) {
 					ScriptTupleImplementation key = iter.next();
-					ScriptTupleRunnable runnable = taskQueue.get(key);
+					currentlyRunning = taskQueue.get(key);
+					if(contextsToStop.contains(key.getContext())) {
+						iter.remove();
+						continue;
+					}
 					// The ScriptTupleRunnable should run until it yields, and then continue when called again.
-					runnable.run();
+					currentlyRunning.run();
 					// If the runnable is done, then remove it from the taskQueue.
-					if(runnable.isFinished())
+					if(currentlyRunning.isFinished())
 						iter.remove();
 				}
 				if(stopFlagged) {
