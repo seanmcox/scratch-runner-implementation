@@ -112,9 +112,9 @@ public class ScriptTupleThread {
 		 */
 		@Override
 		public void run() {
-			long startTime, delay;
+			long frameStartTime, delay;
+			frameStartTime = System.currentTimeMillis();
 			while(true) {
-				startTime = System.currentTimeMillis();
 				synchronized(scriptsToStart) {
 					// A script set to start/restart will no longer be expected to start.
 					for(ScriptTupleImplementation scriptToStop:scriptsToStart.keySet())
@@ -151,16 +151,18 @@ public class ScriptTupleThread {
 					stopFlagged = false;
 				}
 				// Trigger painting if painting is needed.
-				ScratchRuntimeImplementation.getScratchRuntime().repaintStageFinal();
-				delay = System.currentTimeMillis() - startTime;
-				if(delay<DEFAULT_FRAME_DELAY_MS) {
-					// Current painting mechanism to only flag that painting should be triggered.
-					// See: https://en.scratch-wiki.info/wiki/Single_Frame#Effects_of_Turbo_Speed
-					try {
-						Thread.sleep(DEFAULT_FRAME_DELAY_MS-delay);
+				if(ScratchRuntimeImplementation.getScratchRuntime().repaintStageFinal()) {
+					delay = System.currentTimeMillis() - frameStartTime;
+					if(delay<DEFAULT_FRAME_DELAY_MS) {
+						// Current painting mechanism to only flag that painting should be triggered.
+						// See: https://en.scratch-wiki.info/wiki/Single_Frame#Effects_of_Turbo_Speed
+						try {
+							Thread.sleep(DEFAULT_FRAME_DELAY_MS-delay);
+						}
+						catch(InterruptedException t) {
+						}
 					}
-					catch(InterruptedException t) {
-					}
+					frameStartTime = System.currentTimeMillis();
 				}
 			}
 		}

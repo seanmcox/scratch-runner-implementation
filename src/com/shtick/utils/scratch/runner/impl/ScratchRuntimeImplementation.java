@@ -641,14 +641,17 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	/**
 	 * Called by the ScriptTupleThread.
 	 * If repaint was requested, then this triggers the repaint to occur.
+	 * 
+	 * @return true if repaint called, and false otherwise.
 	 */
-	protected void repaintStageFinal() {
+	protected boolean repaintStageFinal() {
 		if((mainWindow==null)||(!repaintNeeded))
-			return;
+			return false;
 		synchronized(mainWindow) {
 			mainWindow.repaint();
 			repaintNeeded = false;
 		}
+		return true;
 	}
 	
 
