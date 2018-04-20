@@ -1507,7 +1507,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 				if(!(variableObject instanceof Map<?,?>))
 					throw new IOException("variable not encoded as map");
 				String name = (String)((Map<String,Object>)variableObject).get("name");
-				String value = (String)((Map<String,Object>)variableObject).get("name");
+				Object value = ((Map<String,Object>)variableObject).get("value");
 				variables[i] = new VariableImplementation(name, value);
 				i++;
 			}
