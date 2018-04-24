@@ -17,7 +17,6 @@ import java.util.Map;
 import javax.swing.JPanel;
 
 import com.shtick.utils.scratch.runner.core.GraphicEffect;
-import com.shtick.utils.scratch.runner.core.elements.Costume;
 import com.shtick.utils.scratch.runner.core.elements.List;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
@@ -39,6 +38,7 @@ import com.shtick.utils.scratch.runner.impl.elements.StageMonitorImplementation;
 public class StagePanel extends JPanel {
 	private static Object LAYER_LOCK = new Object();
 	private BufferedImage penLayer;
+	private BufferedImage buffer;
 	private HashMap<RenderableChild,Component> renderableChildComponents;
 	
 	// Reused painting objects
@@ -108,6 +108,14 @@ public class StagePanel extends JPanel {
 	 */
 	@Override
 	public void paint(Graphics g) {
+		Graphics finalGraphics = g;
+		if(buffer==null) {
+			ScratchRuntimeImplementation runtime = ScratchRuntimeImplementation.getScratchRuntime();
+			buffer = new BufferedImage(runtime.getStageWidth(),runtime.getStageHeight(), java.awt.Transparency.TRANSLUCENT);
+		}
+		g = buffer.getGraphics();
+		
+		long startTime = System.currentTimeMillis();
 		ScratchRuntimeImplementation runtime = ScratchRuntimeImplementation.getScratchRuntime();
 		int width = getWidth();
 		int height = getHeight();
@@ -204,7 +212,8 @@ public class StagePanel extends JPanel {
 			Rectangle bounds = shape.getBounds();
 			g2.drawImage(bubbleImage.getImage(), bounds.x+bounds.width, bounds.y-bubbleImage.getImage().getHeight(null), null);
 		}
-		
+
+		finalGraphics.drawImage(buffer,0,0,null);
 //		super.paintChildren(g);
 	}
 
