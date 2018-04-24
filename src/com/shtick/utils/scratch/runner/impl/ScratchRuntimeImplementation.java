@@ -648,7 +648,15 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if((mainWindow==null)||(!repaintNeeded))
 			return false;
 		synchronized(mainWindow) {
-			mainWindow.repaint();
+			try {
+				SwingUtilities.invokeAndWait(()->{
+					mainWindow.paint(mainWindow.getGraphics());
+				});
+			}
+			catch(InvocationTargetException t) {
+				t.printStackTrace();
+			}
+			catch(InterruptedException t) {};
 			repaintNeeded = false;
 		}
 		return true;
