@@ -317,9 +317,9 @@ public class StageImplementation implements Stage{
 	}
 
 	@Override
-	public Object getContextVariableValueByName(String name) throws IllegalArgumentException {
+	public Object getContextVariableValueByName(String name) {
 		if(!variableValuesByName.containsKey(name))
-			throw new IllegalArgumentException();
+			return null;
 		return variableValuesByName.get(name);
 	}
 
@@ -525,6 +525,8 @@ public class StageImplementation implements Stage{
 		synchronized(children) {
 			if(!children.contains(sprite))
 				throw new IllegalArgumentException("Unknown Sprite");
+			children.remove(sprite);
+			children.addLast(sprite);
 		}
 	}
 
