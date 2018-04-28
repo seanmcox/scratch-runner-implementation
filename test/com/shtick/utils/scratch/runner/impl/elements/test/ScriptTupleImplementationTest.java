@@ -805,6 +805,11 @@ public class ScriptTupleImplementationTest {
 		}
 
 		@Override
+		public SoundMonitor playSoundByIndex(int index) {
+			throw new UnsupportedOperationException("Called playSoundByName when not expected.");
+		}
+
+		@Override
 		public void setVolume(double volume) {
 			throw new UnsupportedOperationException("Called setVolume when not expected.");
 		}
