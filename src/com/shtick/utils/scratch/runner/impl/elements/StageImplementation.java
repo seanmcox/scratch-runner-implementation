@@ -135,7 +135,7 @@ public class StageImplementation implements Stage{
 	@Override
 	public SoundMonitor playSoundByName(String soundName) {
 		if(!soundsByName.containsKey(soundName))
-			throw new IllegalArgumentException("Could not find sound with name, "+soundName+", in "+objName+".");
+			return null;
 		SoundImplementation sound = soundsByName.get(soundName);
 		String resourceName = sound.getResourceName();
 		try {
@@ -317,9 +317,9 @@ public class StageImplementation implements Stage{
 	}
 
 	@Override
-	public Object getContextVariableValueByName(String name) throws IllegalArgumentException {
+	public Object getContextVariableValueByName(String name) {
 		if(!variableValuesByName.containsKey(name))
-			throw new IllegalArgumentException();
+			return null;
 		return variableValuesByName.get(name);
 	}
 
@@ -500,10 +500,11 @@ public class StageImplementation implements Stage{
 	/**
 	 * 
 	 * @param child
+	 * @return true if the child existed and was removed, and false otherwise.
 	 */
-	public void removeChild(RenderableChild child) {
+	public boolean removeChild(RenderableChild child) {
 		synchronized(children) {
-			children.remove(child);
+			return children.remove(child);
 		}
 	}
 
@@ -520,24 +521,30 @@ public class StageImplementation implements Stage{
 	/**
 	 * 
 	 * @param sprite
+	 * @return true if the sprite existed, and false otherwise.
 	 */
-	public void bringToFront(Sprite sprite) {
+	public boolean bringToFront(Sprite sprite) {
 		synchronized(children) {
 			if(!children.contains(sprite))
-				throw new IllegalArgumentException("Unknown Sprite");
+				return false;
+			children.remove(sprite);
+			children.addLast(sprite);
+			return true;
 		}
 	}
 
 	/**
 	 * 
 	 * @param sprite
+	 * @return true if the sprite existed, and false otherwise.
 	 */
-	public void sendToBack(Sprite sprite) {
+	public boolean sendToBack(Sprite sprite) {
 		synchronized(children) {
 			if(!children.contains(sprite))
-				throw new IllegalArgumentException("Unknown Sprite");
+				return false;
 			children.remove(sprite);
 			children.addFirst(sprite);
+			return true;
 		}		
 	}
 
@@ -545,18 +552,21 @@ public class StageImplementation implements Stage{
 	 * 
 	 * @param sprite
 	 * @param n
+	 * @return true if the sprite existed, and false otherwise.
 	 */
-	public void sendBackNLayers(Sprite sprite, int n) {
+	public boolean sendBackNLayers(Sprite sprite, int n) {
 		synchronized(children) {
 			if(!children.contains(sprite))
-				throw new IllegalArgumentException("Unknown Sprite");
+				return false;
 			int layer = children.indexOf(sprite);
+			children.remove(sprite);
 			layer -= n;
 			if(layer<0)
 				layer=0;
 			if(layer>children.size())
 				layer=children.size();
 			children.add(layer,sprite);
+			return true;
 		}		
 	}
 }
