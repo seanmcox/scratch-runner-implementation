@@ -36,6 +36,12 @@ public class AllBadSprite implements Sprite {
 	}
 	
 	@Override
+	public SoundMonitor playSoundByIndex(int index) {
+		fail("playSoundByIndex called unnecessarily");
+		return null;
+	}
+
+	@Override
 	public void setVolume(double volume) {
 		fail("setVolume called unnecessarily");
 	}

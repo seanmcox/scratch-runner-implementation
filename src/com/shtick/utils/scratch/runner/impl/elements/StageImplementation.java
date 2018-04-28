@@ -30,6 +30,7 @@ import com.shtick.utils.scratch.runner.impl.ScriptTupleThread;
 public class StageImplementation implements Stage{
 	private String objName;
 	private java.util.List<ScriptTupleImplementation> scripts;
+	private SoundImplementation[] sounds;
 	private Map<String,SoundImplementation> soundsByName;
 	private long penLayerID;
 	private String penLayerMD5;
@@ -83,6 +84,7 @@ public class StageImplementation implements Stage{
 		}
 		this.listsByName = listsByName;
 		this.scripts = new LinkedList<>();
+		this.sounds = sounds;
 		if(sounds==null) {
 			soundsByName = new HashMap<>();
 		}
@@ -137,9 +139,25 @@ public class StageImplementation implements Stage{
 		if(!soundsByName.containsKey(soundName))
 			return null;
 		SoundImplementation sound = soundsByName.get(soundName);
+		return playSound(sound);
+	}
+	
+	@Override
+	public SoundMonitor playSoundByIndex(int index) {
+		if(index<0)
+			return null;
+		if(index>=sounds.length)
+			return null;
+		SoundImplementation sound = sounds[index];
+		return playSound(sound);
+	}
+
+	private SoundMonitor playSound(SoundImplementation sound) {
 		String resourceName = sound.getResourceName();
+		Clip clip = null;
 		try {
-			final Clip clip = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
+			clip = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
+			final Clip finalClip = clip;
 			if(clip==null) {
 				return new SoundMonitor() {
 					
@@ -157,24 +175,31 @@ public class StageImplementation implements Stage{
 					public void update(LineEvent event) {
 						if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
 							synchronized(activeClips) {
-								activeClips.remove(clip);
+								activeClips.remove(finalClip);
+								if(event.getType()==LineEvent.Type.STOP) {
+									finalClip.close();
+								}
 							}
 						}
 					}
 				});
-				if(!clip.isRunning())
+				if(!clip.isRunning()) {
 					activeClips.remove(clip);
+					clip.close();
+				}
 			}
 			return new SoundMonitor() {
 				
 				@Override
 				public boolean isDone() {
-					return !clip.isRunning();
+					return !finalClip.isRunning();
 				}
 			};
 		}
 		catch(Throwable t) {
 			t.printStackTrace();
+			if(clip!=null)
+				clip.close();
 			return new SoundMonitor() {
 				
 				@Override

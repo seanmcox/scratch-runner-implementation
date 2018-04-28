@@ -951,6 +951,9 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 						if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
 							synchronized(activeClips) {
 								activeClips.remove(clip);
+								if(event.getType()==LineEvent.Type.STOP) {
+									clip.close();
+								}
 							}
 						}
 					}
