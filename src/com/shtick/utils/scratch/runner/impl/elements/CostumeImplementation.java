@@ -104,7 +104,7 @@ public class CostumeImplementation implements Costume{
 	 * @param mirror For left/right style images, then when this is true, the direction should be set as if there were no rotation at all.
 	 *               The image is flipped first, and then rotated. The overall affect allows for mirror images in any direction, although scratch does not support such a style.
 	 */
-	void registerSprite(SpriteImplementation sprite, double scale, double direction, boolean mirror) {
+	protected void registerSprite(SpriteImplementation sprite, double scale, double direction, boolean mirror) {
 		String key = ""+ (int)(scale*1000)+"-"+(int)(direction*180/Math.PI)+"-"+(mirror?"t":"f");
 		synchronized(imagePool) {
 			String oldKey = spriteRegistry.get(sprite);
