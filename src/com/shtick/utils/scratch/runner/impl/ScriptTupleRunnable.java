@@ -43,9 +43,19 @@ public class ScriptTupleRunnable implements Runnable {
 	private OpcodeSubaction yieldCheck = null;
 
 	private final Object STOP_LOCK = new Object();
+	/**
+	 * Used to flag that the currently running script (top of the stack) should be aborted.
+	 */
 	private boolean stopProcedure = false;
+	/**
+	 * Used to flag that the entire call stack needs to be aborted, rather than just the currently running script on the top of the stack.
+	 */
 	private boolean totalStop = false;
 	private boolean stopped = false;
+	/**
+	 * Indicated that the script is actively executing now. (ie. false if yielded or stopped)
+	 */
+	private boolean running = false;
 
 	private ScriptTupleRunnerImpl scriptRunner;
 
@@ -96,6 +106,23 @@ public class ScriptTupleRunnable implements Runnable {
 	public void flagStop(boolean totalStop) {
 		this.totalStop = totalStop;
 		stopProcedure=true;
+		if(totalStop) {
+			new Thread(()->{
+				synchronized(STOP_LOCK) {
+					while(running) {
+						try {
+							STOP_LOCK.wait(100);
+						}
+						catch(InterruptedException t) {}
+					}
+					if(!stopped) {
+						stopped = true;
+						STOP_LOCK.notifyAll();
+						scriptRunner.runnable = null;
+					}
+				}
+			}).start();
+		}
 	}
 	
 	/**
@@ -123,46 +150,41 @@ public class ScriptTupleRunnable implements Runnable {
 			yieldCheck = null;
 		}
 		
-		// Run the next script segment.
-		while((callStack.size()>0)&&(!totalStop)) {
-			YieldingScript yieldingScript = callStack.peek();
-			while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stopProcedure)) {
-				if(yieldingScript.debugFlag)
-					System.out.println("Index: "+yieldingScript.index+"/"+yieldingScript.blockTuples.length);
-				BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
-				if(tuple instanceof ControlBlockTuple) {
-					if(tuple instanceof TestBlockTuple) {
-						testResult = (Boolean)getValue(yieldingScript.context,tuple.getArguments().get(0),yieldingScript.localVariables);
-						yieldingScript.index++;
-						continue;
-					}
-					else if(tuple instanceof SetLocalVarBlockTuple) {
-						yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = getValue(yieldingScript.context,tuple.getArguments().get(1),yieldingScript.localVariables);
-						yieldingScript.index++;
-						continue;
-					}
-					else if(tuple instanceof ChangeLocalVarByBlockTuple) {
-						Number value = OpcodeUtils.getNumericValue(yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()]);
-						Number change = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,tuple.getArguments().get(1),yieldingScript.localVariables));
-						if((value instanceof Double)||(value instanceof Double))
-							value = value.doubleValue()+change.doubleValue();
-						else
-							value = value.longValue()+change.longValue();
-						yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = value;
-						yieldingScript.index++;
-						continue;
-					}
-					if(tuple instanceof BasicJumpBlockTuple) {
-						if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
-							// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
-							yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
-							return;
+		try {
+			synchronized(STOP_LOCK) {
+				running = true;
+			}
+		
+			// Run the next script segment.
+			while((callStack.size()>0)&&(!totalStop)) {
+				YieldingScript yieldingScript = callStack.peek();
+				while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stopProcedure)) {
+					if(yieldingScript.debugFlag)
+						System.out.println("Index: "+yieldingScript.index+"/"+yieldingScript.blockTuples.length);
+					BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
+					if(tuple instanceof ControlBlockTuple) {
+						if(tuple instanceof TestBlockTuple) {
+							testResult = (Boolean)getValue(yieldingScript.context,tuple.getArguments().get(0),yieldingScript.localVariables);
+							yieldingScript.index++;
+							continue;
 						}
-						yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
-						continue;
-					}
-					else if(tuple instanceof TrueJumpBlockTuple) {
-						if(testResult) {
+						else if(tuple instanceof SetLocalVarBlockTuple) {
+							yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = getValue(yieldingScript.context,tuple.getArguments().get(1),yieldingScript.localVariables);
+							yieldingScript.index++;
+							continue;
+						}
+						else if(tuple instanceof ChangeLocalVarByBlockTuple) {
+							Number value = OpcodeUtils.getNumericValue(yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()]);
+							Number change = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,tuple.getArguments().get(1),yieldingScript.localVariables));
+							if((value instanceof Double)||(value instanceof Double))
+								value = value.doubleValue()+change.doubleValue();
+							else
+								value = value.longValue()+change.longValue();
+							yieldingScript.localVariables[((LocalVarBlockTuple)tuple).getLocalVarIdentifier()] = value;
+							yieldingScript.index++;
+							continue;
+						}
+						if(tuple instanceof BasicJumpBlockTuple) {
 							if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
 								// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
 								yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
@@ -171,110 +193,127 @@ public class ScriptTupleRunnable implements Runnable {
 							yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
 							continue;
 						}
-					}
-					else if(tuple instanceof FalseJumpBlockTuple) {
-						if(!testResult) {
-							if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
-								// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
+						else if(tuple instanceof TrueJumpBlockTuple) {
+							if(testResult) {
+								if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
+									// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
+									yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
+									return;
+								}
 								yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
-								return;
+								continue;
 							}
-							yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
-							continue;
 						}
+						else if(tuple instanceof FalseJumpBlockTuple) {
+							if(!testResult) {
+								if((!yieldingScript.isAtomic)&&(((JumpBlockTuple)tuple).getIndex()<yieldingScript.index)) {
+									// If the new index is before the old index, then yield after updating the index, unless this function is atomic.
+									yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
+									return;
+								}
+								yieldingScript.index = ((JumpBlockTuple)tuple).getIndex();
+								continue;
+							}
+						}
+						else {
+							throw new InvalidScriptDefinitionException("Unrecognized control block: "+tuple.getClass().getCanonicalName());
+						}
+						yieldingScript.index++;
+						continue;
 					}
-					else {
-						throw new InvalidScriptDefinitionException("Unrecognized control block: "+tuple.getClass().getCanonicalName());
-					}
-					yieldingScript.index++;
-					continue;
-				}
-				// TODO Move type/safety checking below to resolveScript. (Opcode value implementations will need to report a return type.)
-				//      The type checking at that point would be less comprehensive, probably, but this seems to be the direction I need to go to improve performance.
-				String opcode = tuple.getOpcode();
-				java.util.List<Object> arguments = tuple.getArguments();
-				ScratchRuntime runtime = ScratchRuntimeImplementation.getScratchRuntime();
-				Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
-				DataType[] types = opcodeImplementation.getArgumentTypes();
-				Object[] executableArguments = new Object[arguments.size()];
-				for(int i=0;i<types.length;i++) {
-					switch(types[i]) {
-					case BOOLEAN:
-						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables);
-						
-						if(!(executableArguments[i] instanceof Boolean))
-							throw new InvalidScriptDefinitionException("Non-tuple provided where tuple expected.");
-						break;
-					case NUMBER:
-						executableArguments[i] = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables));
-						break;
-					case OBJECT:
-						executableArguments[i] = getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables);
-						if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
-							throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
-						break;
-					case OBJECTS:
-						Object[] newArguments = new Object[types.length];
-						for(int j=0;j<types.length-1;j++)
-							newArguments[j] = arguments.get(j);
-						Object[] objects = new Object[arguments.size()-types.length+1];
-						for(int j=0;j<objects.length;j++) {
-							objects[j] = getValue(yieldingScript.context,arguments.get(i+j),yieldingScript.localVariables);
-							if(!((objects[j] instanceof Boolean)||(objects[j] instanceof Number)||(objects[j] instanceof String)))
+					// TODO Move type/safety checking below to resolveScript. (Opcode value implementations will need to report a return type.)
+					//      The type checking at that point would be less comprehensive, probably, but this seems to be the direction I need to go to improve performance.
+					String opcode = tuple.getOpcode();
+					java.util.List<Object> arguments = tuple.getArguments();
+					ScratchRuntime runtime = ScratchRuntimeImplementation.getScratchRuntime();
+					Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+					DataType[] types = opcodeImplementation.getArgumentTypes();
+					Object[] executableArguments = new Object[arguments.size()];
+					for(int i=0;i<types.length;i++) {
+						switch(types[i]) {
+						case BOOLEAN:
+							executableArguments[i] = getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables);
+							
+							if(!(executableArguments[i] instanceof Boolean))
+								throw new InvalidScriptDefinitionException("Non-tuple provided where tuple expected.");
+							break;
+						case NUMBER:
+							executableArguments[i] = OpcodeUtils.getNumericValue(getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables));
+							break;
+						case OBJECT:
+							executableArguments[i] = getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables);
+							if(!((executableArguments[i] instanceof Boolean)||(executableArguments[i] instanceof Number)||(executableArguments[i] instanceof String)))
 								throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
+							break;
+						case OBJECTS:
+							Object[] newArguments = new Object[types.length];
+							for(int j=0;j<types.length-1;j++)
+								newArguments[j] = arguments.get(j);
+							Object[] objects = new Object[arguments.size()-types.length+1];
+							for(int j=0;j<objects.length;j++) {
+								objects[j] = getValue(yieldingScript.context,arguments.get(i+j),yieldingScript.localVariables);
+								if(!((objects[j] instanceof Boolean)||(objects[j] instanceof Number)||(objects[j] instanceof String)))
+									throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
+							}
+							executableArguments = newArguments;
+							executableArguments[i] = objects;
+							break;
+						case STRING:
+							executableArguments[i] = OpcodeUtils.getStringValue(getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables));
+							break;
+						default:
+							throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
 						}
-						executableArguments = newArguments;
-						executableArguments[i] = objects;
-						break;
-					case STRING:
-						executableArguments[i] = OpcodeUtils.getStringValue(getValue(yieldingScript.context,arguments.get(i),yieldingScript.localVariables));
-						break;
-					default:
-						throw new RuntimeException("Unhandled DataType, "+types[i].name()+", in method signature for opcode, "+opcode);
+					}
+					currentOpcode = opcodeImplementation;
+					if(yieldingScript.debugFlag) {
+						String description = currentOpcode.getOpcode()+" "+Arrays.toString((Object[])executableArguments);
+						System.out.println("</>"+description);
+					}
+					OpcodeSubaction subaction = ((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, yieldingScript.context, executableArguments);
+					yieldingScript.index++;
+					if(subaction!=null) {
+						switch(subaction.getType()) {
+						case YIELD_CHECK:
+							if(!yieldingScript.isAtomic) {
+								yieldCheck = subaction;
+								return;
+							}
+						case SUBSCRIPT:
+							String description = currentOpcode.getOpcode()+" "+executableArguments[0]+" "+Arrays.toString((Object[])executableArguments[1]);
+							synchronized(callStack){
+								if(!stopProcedure)
+									callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), description));
+							}
+							if(!yieldingScript.isAtomic) {
+								return;
+							}
+							yieldingScript = callStack.peek();
+						}
 					}
 				}
-				currentOpcode = opcodeImplementation;
-				if(yieldingScript.debugFlag) {
-					String description = currentOpcode.getOpcode()+" "+Arrays.toString((Object[])executableArguments);
-					System.out.println("</>"+description);
+				currentOpcode = null;
+				synchronized(callStack){
+					callStack.pop();
 				}
-				OpcodeSubaction subaction = ((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, yieldingScript.context, executableArguments);
-				yieldingScript.index++;
-				if(subaction!=null) {
-					switch(subaction.getType()) {
-					case YIELD_CHECK:
-						if(!yieldingScript.isAtomic) {
-							yieldCheck = subaction;
-							return;
-						}
-					case SUBSCRIPT:
-						String description = currentOpcode.getOpcode()+" "+executableArguments[0]+" "+Arrays.toString((Object[])executableArguments[1]);
-						synchronized(callStack){
-							if(!stopProcedure)
-								callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), description));
-						}
-						if(!yieldingScript.isAtomic) {
-							return;
-						}
-						yieldingScript = callStack.peek();
-					}
+				stopProcedure = false;
+				if(callStack.size() > 0) {
+					yieldingScript = callStack.peek();
+					if(!yieldingScript.isAtomic)
+						return;
 				}
 			}
-			currentOpcode = null;
-			synchronized(callStack){
-				callStack.pop();
-			}
-			stopProcedure = false;
-			if(callStack.size() > 0) {
-				yieldingScript = callStack.peek();
-				if(!yieldingScript.isAtomic)
-					return;
+
+			synchronized(STOP_LOCK) {
+				stopped = true;
+				STOP_LOCK.notifyAll();
+				scriptRunner.runnable = null;
 			}
 		}
-		synchronized(STOP_LOCK) {
-			stopped = true;
-			STOP_LOCK.notifyAll();
-			scriptRunner.runnable = null;
+		finally{
+			synchronized(STOP_LOCK) {
+				running = false;
+			}
 		}
 	}
 	

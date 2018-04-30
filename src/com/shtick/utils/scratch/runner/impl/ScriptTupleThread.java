@@ -25,7 +25,7 @@ public class ScriptTupleThread {
 	private HashMap<ScriptTupleImplementation,ScriptTupleRunnable> scriptsToStart = new HashMap<>();
 	private HashSet<ScriptTupleImplementation> scriptsToStop = new HashSet<>();
 	private HashSet<ScriptContext> contextsToStop = new HashSet<>();
-	private Thread mainThread = new Thread(new MainProcess());
+	private Thread mainThread = new Thread(new MainProcess(), "Scratch Execution Thread");
 	private boolean stopFlagged = false;
 	private ScriptTupleRunnable currentlyRunning;
 	
