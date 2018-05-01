@@ -279,8 +279,9 @@ public class ScriptTupleRunnable implements Runnable {
 								yieldCheck = subaction;
 								return;
 							}
+							break;
 						case SUBSCRIPT:
-							String description = currentOpcode.getOpcode()+" "+executableArguments[0]+" "+Arrays.toString((Object[])executableArguments[1]);
+							String description = currentOpcode.getOpcode()+" "+executableArguments[0]+((executableArguments.length>1)?(" "+Arrays.toString((Object[])executableArguments[1])):"");
 							synchronized(callStack){
 								if(!stopProcedure)
 									callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), description));
@@ -289,6 +290,7 @@ public class ScriptTupleRunnable implements Runnable {
 								return;
 							}
 							yieldingScript = callStack.peek();
+							break;
 						}
 					}
 				}
