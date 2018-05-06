@@ -90,6 +90,8 @@ import org.w3c.dom.svg.SVGDocument;
 import com.shtick.util.tokenizers.json.NumberToken;
 import com.shtick.utils.data.json.JSONDecoder;
 import com.shtick.utils.data.json.JSONNumberDecoder;
+import com.shtick.utils.scratch.ScratchFile;
+import com.shtick.utils.scratch.ScratchImageRenderer;
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
@@ -1310,129 +1312,12 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		// Get the image for this costume.
 		String md5 = (String)map.get("baseLayerMD5");
 		Long baseLayerID = (Long)map.get("baseLayerID");
-		String[] parts = md5.split("\\.",2);
-		if(parts.length<2)
+		String[] filenameParts = md5.split("\\.",2);
+		if(filenameParts.length<2)
 			throw new IOException("Invalid baseLayerMD5: "+md5);
-		String resourceName = baseLayerID.toString()+"."+parts[1];
-		BufferedImage image;
-		if("svg".equals(parts[1])) {
-			try(InputStream in = scratchFile.getResource(resourceName)){
-			    String parser = XMLResourceDescriptor.getXMLParserClassName();
-			    SAXSVGDocumentFactory f = new SAXSVGDocumentFactory(parser);
-			    SVGDocument doc = (SVGDocument)f.createDocument(resourceName, in);
+		String resourceName = baseLayerID.toString()+"."+filenameParts[1];
+		BufferedImage image = ScratchImageRenderer.renderImageResource(resourceName, scratchFile);
 
-			    { // Handle the SVG spec vs. Scratch implementation discrepancy re: multiline text.
-					NodeList textNodes = doc.getElementsByTagName("text");
-					for(int i=0;i<textNodes.getLength();i++) {
-						Node textNode = textNodes.item(i);
-						String[] lines = textNode.getTextContent().split("\\n");
-						if(lines.length==0)
-							continue;
-						textNode.setTextContent("");
-						int l=0;
-						int j=0;
-						for(String line:lines) {
-							j++;
-							l++;
-							if(line.length()==0)
-								continue;
-							line = line.replace(" ", "\u00A0");
-							if(j>1) {
-								Element lineElement = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
-								lineElement.setAttribute("dy", l+"em");
-								lineElement.setAttribute("x", ((Element)textNode).getAttribute("x"));
-								lineElement.setTextContent(line);
-								textNode.appendChild(lineElement);
-							}
-							else {
-								textNode.setTextContent(line);
-							}
-							l=0;
-						}
-					}
-			    }
-
-				NodeList svgNodes = doc.getElementsByTagName("svg");
-				if(svgNodes.getLength()==0)
-					throw new IOException("No svg node found");
-				NamedNodeMap attributes = svgNodes.item(0).getAttributes();
-				Node node = attributes.getNamedItem("viewBox");
-				if(node!=null) { // Handle Scratch's annoying tendency to define a viewBox that truncates the image (yet it still displays the portions of the defined image outside the viewBox)
-					String[] oldViewBoxParts = node.getNodeValue().split(" ");
-					Rectangle2D oldViewBoxRectangle = new Rectangle2D.Double(
-							Double.parseDouble(oldViewBoxParts[0]),
-							Double.parseDouble(oldViewBoxParts[1]),
-							Double.parseDouble(oldViewBoxParts[2]),
-							Double.parseDouble(oldViewBoxParts[3]));
-
-					GVTBuilder builder = new GVTBuilder();
-					BridgeContext ctx;
-					ctx = new BridgeContext(new UserAgentAdapter());
-					GraphicsNode gvtRoot = builder.build(ctx, doc);
-					Rectangle2D rect = gvtRoot.getSensitiveBounds();
-					if(rect==null)
-						rect = oldViewBoxRectangle;
-					else
-						Rectangle2D.union(oldViewBoxRectangle, rect, rect);
-					oldViewBoxParts[0] = ""+rect.getX();
-					oldViewBoxParts[1] = ""+rect.getY();
-					oldViewBoxParts[2] = ""+(rect.getWidth());
-					oldViewBoxParts[3] = ""+(rect.getHeight());
-
-					String viewBox = "";
-					for(String part:oldViewBoxParts)
-						viewBox+=" "+part;
-					node.setNodeValue(viewBox.trim());
-					attributes.getNamedItem("viewBox").setNodeValue(viewBox);
-					node = attributes.getNamedItem("x");
-					if(node!=null)
-						node.setNodeValue(oldViewBoxParts[0]+"px");
-					node = attributes.getNamedItem("y");
-					if(node!=null)
-						node.setNodeValue(oldViewBoxParts[1]+"px");
-					node = attributes.getNamedItem("width");
-					if(node!=null)
-						node.setNodeValue(oldViewBoxParts[2]+"px");
-					node = attributes.getNamedItem("height");
-					if(node!=null)
-						node.setNodeValue(oldViewBoxParts[3]+"px");
-				}
-				node = attributes.getNamedItem("enable-background");
-				if(node!=null)
-					attributes.removeNamedItem("enable-background");
-
-				TranscoderInput svgIn = new TranscoderInput(doc);
-				ByteArrayOutputStream pngBytesOut = new ByteArrayOutputStream();
-				TranscoderOutput pngOut = new TranscoderOutput(pngBytesOut);
-				PNGTranscoder transcoder = new PNGTranscoder();
-				try {
-					transcoder.transcode(svgIn, pngOut);
-				}
-				catch(TranscoderException t) {
-					throw new RuntimeException(t);
-				}
-				ByteArrayInputStream pngIn = new ByteArrayInputStream(pngBytesOut.toByteArray());
-				ImageInputStream iis = ImageIO.createImageInputStream(pngIn);
-		        Iterator<ImageReader> iter = ImageIO.getImageReaders(iis);
-				if(!iter.hasNext())
-					throw new IOException("Reader not found for transcoded png originating from: "+resourceName);
-			    ImageReader reader = iter.next();
-			    reader.setInput(iis);
-			    image = reader.read(0);
-			}
-		}
-		else {
-			try(InputStream in = scratchFile.getResource(resourceName)){
-				ImageInputStream iis = ImageIO.createImageInputStream(in);
-		        Iterator<ImageReader> iter = ImageIO.getImageReaders(iis);
-				if(!iter.hasNext())
-					throw new IOException("Reader not found for specified image: "+resourceName);
-			    ImageReader reader = iter.next();
-			    reader.setInput(iis);
-			    image = reader.read(0);
-			}
-		}
-		
 		return new CostumeImplementation((String)map.get("costumeName"), baseLayerID, md5, ((Long)map.get("bitmapResolution")).intValue(), ((Long)map.get("rotationCenterX")).intValue(), ((Long)map.get("rotationCenterY")).intValue(), image);
 	}
 
