@@ -1092,7 +1092,6 @@ public class SpriteImplementation implements Sprite{
 						runtime.startScript(script);
 				}
 			}
-			ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 		}
 	}
 
@@ -1139,7 +1138,6 @@ public class SpriteImplementation implements Sprite{
 			cloneOf.clones.remove(this);
 		}
 		ScratchRuntimeImplementation.getScratchRuntime().deleteClone(this);
-		ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
 	}
 
 	/**

@@ -342,10 +342,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	
 	/**
 	 * @param projectFile 
-	 * @param stageWidth 
-	 * @param stageHeight 
-	 * @param frameWidth 
-	 * @param frameHeight 
+	 * @param stageWidth The width of the stage in stage units. The standard value is 480. In combination with the frame width, this value determines how stage positions translate to pixel positions on the horizontal axis.
+	 * @param stageHeight The height of the stage in stage units. The standard value is 360. In combination with the frame height, this value determines how stage positions translate to pixel positions on the vertical axis.
+	 * @param frameWidth The width of the stage in pixels.
+	 * @param frameHeight The height of the stage in pixels.
 	 * @param fullscreen 
 	 * @throws IOException 
 	 * 
@@ -1025,8 +1025,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	@Override
 	public void addComponent(Component component, int x, int y, int width, int height) {
 		JPanel panel = frameStack.peek();
-		if(panel instanceof StagePanel)
+		if(panel instanceof StagePanel) {
 			((StagePanel)panel).addComponent(component, x, y, width, height);
+			repaintStage();
+		}
 	}
 
 	/* (non-Javadoc)
@@ -1035,8 +1037,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	@Override
 	public void removeComponent(Component component) {
 		JPanel panel = frameStack.peek();
-		if(panel instanceof StagePanel)
+		if(panel instanceof StagePanel) {
 			((StagePanel)panel).removeComponent(component);
+			repaintStage();
+		}
 	}
 	
 	/**
@@ -1047,6 +1051,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(!sprite.isClone())
 			throw new IllegalStateException();
 		stage.addChild(sprite);
+		repaintStage();
 	}
 	
 	/**
@@ -1057,6 +1062,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(!sprite.isClone())
 			throw new IllegalStateException();
 		stage.removeChild(sprite);
+		repaintStage();
 	}
 
 	private void loadProject(File file) throws IOException{
