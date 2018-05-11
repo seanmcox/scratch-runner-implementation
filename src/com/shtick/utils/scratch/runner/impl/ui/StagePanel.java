@@ -12,6 +12,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 
 import javax.swing.JPanel;
@@ -40,6 +41,7 @@ public class StagePanel extends JPanel {
 	private BufferedImage penLayer;
 	private BufferedImage buffer;
 	private HashMap<RenderableChild,Component> renderableChildComponents;
+	private LinkedList<Component> otherComponents = new LinkedList<>();
 	
 	// Reused painting objects
 	private Rectangle paintingRectangle = new Rectangle();
@@ -212,6 +214,23 @@ public class StagePanel extends JPanel {
 			Rectangle bounds = shape.getBounds();
 			g2.drawImage(bubbleImage.getImage(), bounds.x+bounds.width, bounds.y-bubbleImage.getImage().getHeight(null), null);
 		}
+		
+		for(Component component:otherComponents) {
+			synchronized(getTreeLock()) {
+				Rectangle cr;
+
+				cr = component.getBounds(paintingRectangle);
+
+				boolean hitClip = g.hitClip(cr.x, cr.y, cr.width, cr.height);
+				if (hitClip) {
+                    Graphics cg = g.create(cr.x, cr.y, cr.width,
+                            cr.height);
+				    cg.setColor(component.getForeground());
+				    cg.setFont(component.getFont());
+				    component.paint(cg);
+				}
+			}
+		}
 
 		finalGraphics.drawImage(buffer,0,0,null);
 //		super.paintChildren(g);
@@ -246,7 +265,7 @@ public class StagePanel extends JPanel {
 	 * Used to add a component to the top layer (above all the sprites) of the stage.
 	 * Uses a coordinate system similar to scratch's, but with the y-axis reversed.
 	 * ie. centered on the middle, with x increasing to the right and y increasing to the bottom.
-	 * The width and the height are the stage width and height.
+	 * The width and the height units are stage units.
 	 * 
 	 * @param component
 	 * @param x
@@ -255,7 +274,21 @@ public class StagePanel extends JPanel {
 	 * @param height
 	 */
 	public void addComponent(Component component, int x, int y, int width, int height) {
-		// TODO
+		removeComponent(component);
+		ScratchRuntimeImplementation runtime = ScratchRuntimeImplementation.getScratchRuntime();
+		int w = this.getWidth();
+		int h = this.getHeight();
+		double scaleW = runtime.getStageWidth()/(double)w;
+		double scaleH = runtime.getStageHeight()/(double)h;
+		width*=scaleW;
+		height*=scaleH;
+		x+=runtime.getStageWidth()/2;
+		y+=runtime.getStageHeight()/2;
+		x+=scaleW;
+		y*=scaleH;
+		component.setBounds(x, y, width, height);
+		otherComponents.add(component);
+		add(component);
 	}
 	
 	/**
@@ -264,7 +297,8 @@ public class StagePanel extends JPanel {
 	 * @param component
 	 */
 	public void removeComponent(Component component) {
-		// TODO
+		otherComponents.remove(component);
+		remove(component);
 	}
 	
 	/**
