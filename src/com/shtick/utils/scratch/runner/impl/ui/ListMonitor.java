@@ -5,6 +5,7 @@ package com.shtick.utils.scratch.runner.impl.ui;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Shape;
@@ -22,9 +23,12 @@ import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
  */
 public class ListMonitor extends MonitorComponent{
 	private static final Stroke PANEL_STROKE = new BasicStroke(1.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_MITER);
-	private static final Color COLOR_BACKGROUND = new Color(160, 160, 160);
+	private static final Stroke ITEM_PANEL_STROKE = new BasicStroke(1.0f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_MITER);
+	private static final Color COLOR_BACKGROUND = new Color(193, 196, 199);
+	private static final Color COLOR_ITEM_BACKGROUND = new Color(204, 91, 34);
 	private ScriptContext context;
-	private int nameWidth;
+	private String monitorTitle;
+	private int titleWidth;
 	private int lineHeight;
 
 	/**
@@ -39,7 +43,8 @@ public class ListMonitor extends MonitorComponent{
 		setBounds(list.getX().intValue(),list.getY().intValue(), list.getWidth().intValue(), list.getHeight().intValue());
 		
 		// Some rendering precalculation.
-		nameWidth = getFontMetricsLarge().stringWidth(list.getListName());
+		monitorTitle = context.getObjName()+": "+list.getListName();
+		titleWidth = getFontMetricsLarge().stringWidth(monitorTitle);
 		lineHeight = getFontMetricsLarge().getHeight();
 	}
 
@@ -61,24 +66,39 @@ public class ListMonitor extends MonitorComponent{
 
 		g2.setFont(FONT_LARGE);
 		g2.setColor(Color.BLACK);
-		int currentY=lineHeight+3;
-		g2.drawString(name, (getWidth()-nameWidth)/2, currentY);
+		int currentY=lineHeight;
+		g2.drawString(monitorTitle, (getWidth()-titleWidth)/2, currentY);
 		
-		g2.setFont(FONT_NORMAL);
+		FontMetrics fontMetricsMinor = getFontMetricsMinor();
 		Object[] values = list.getContents();
-		for(int i=0;i<values.length;i++) {
+		int itemLineHeight = lineHeight+3;
+		int itemLines = Math.min(values.length, ((getHeight()-itemLineHeight - currentY))/itemLineHeight);
+		int baseWidth = fontMetricsMinor.stringWidth(""+itemLines);
+		Shape itemPanelShape;
+		for(int i=0;i<itemLines;i++) {
+			itemPanelShape = new RoundRectangle2D.Float(baseWidth+10, currentY+4, getWidth()-(baseWidth+10+20), lineHeight+3, 5, 5);
+			g2.setColor(COLOR_ITEM_BACKGROUND);
+			g2.fill(itemPanelShape);
+
+			g2.setFont(FONT_MINOR);
 			g2.setColor(Color.BLACK);
-			g2.drawString(""+(i+1), 10, currentY+lineHeight);
+			g2.drawString(""+(i+1), 5+baseWidth-fontMetricsMinor.stringWidth(""+(i+1)), currentY+lineHeight+2);
 			
+			g2.setFont(FONT_NORMAL);
 			g2.setColor(Color.WHITE);
-			g2.drawString(""+values[i], 30, currentY+lineHeight);
-			currentY+=lineHeight;
+			g2.drawString(""+values[i], baseWidth+15, currentY+lineHeight);
+			Stroke oldStroke = g2.getStroke();
+			g2.setStroke(ITEM_PANEL_STROKE);
+			g2.draw(itemPanelShape);
+			g2.setStroke(oldStroke);
+			currentY+=itemLineHeight;
 		}
+		g2.setFont(FONT_MINOR);
 		currentY+=lineHeight;
 		g2.setColor(Color.BLACK);
 		String text = "length: "+values.length;
 		int textWidth = getFontMetricsLarge().stringWidth(text);
-		g2.drawString(text, (getWidth()-textWidth)/2, currentY);
+		g2.drawString(text, (getWidth()-textWidth)/2, getHeight()-5);
 		
 		g2.setColor(Color.GRAY);
 		g2.setStroke(PANEL_STROKE);
