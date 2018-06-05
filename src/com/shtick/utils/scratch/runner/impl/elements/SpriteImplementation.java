@@ -7,6 +7,8 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Stroke;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -16,10 +18,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.LineEvent;
-import javax.sound.sampled.LineListener;
 import javax.swing.SwingUtilities;
 
 import com.shtick.utils.scratch.runner.core.AbstractSpriteListener;
@@ -81,7 +79,7 @@ public class SpriteImplementation implements Sprite{
 	
 	// Sound properties
 	private double volume = 100;
-	private LinkedList<Clip> activeClips = new LinkedList<>();
+	private LinkedList<SoundMonitor> activeSoundMonitors = new LinkedList<>();
 	private LinkedList<ValueListener> volumeListeners = new LinkedList<>();
 	
 	// Pen properties
@@ -232,60 +230,44 @@ public class SpriteImplementation implements Sprite{
 	
 	private SoundMonitor playSound(SoundImplementation sound) {
 		String resourceName = sound.getResourceName();
-		Clip clip = null;
 		try {
-			clip = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
-			final Clip finalClip = clip;
-			if(clip==null) {
-				return new SoundMonitor() {
+			final SoundMonitor monitor = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
+			if(monitor != null) {
+				activeSoundMonitors.add(monitor);
+				monitor.addCloseListener(new ActionListener() {
 					
 					@Override
-					public boolean isDone() {
-						return true;
-					}
-				};
-			}
-			synchronized(activeClips) {
-				activeClips.add(clip);
-				clip.addLineListener(new LineListener() {
-					
-					@Override
-					public void update(LineEvent event) {
-						if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
-							synchronized(activeClips) {
-								activeClips.remove(finalClip);
-								if(event.getType()==LineEvent.Type.STOP) {
-									finalClip.close();
-								}
-							}
-						}
+					public void actionPerformed(ActionEvent e) {
+						activeSoundMonitors.remove(monitor);
 					}
 				});
-				if(!clip.isRunning()) {
-					activeClips.remove(clip);
-					clip.close();
-				}
+				if(monitor.isDone())
+					activeSoundMonitors.remove(monitor);
+				return monitor;
 			}
-			return new SoundMonitor() {
-				
-				@Override
-				public boolean isDone() {
-					return !finalClip.isRunning();
-				}
-			};
 		}
 		catch(Throwable t) {
 			t.printStackTrace();
-			if(clip!=null)
-				clip.close();
-			return new SoundMonitor() {
-				
-				@Override
-				public boolean isDone() {
-					return true;
-				}
-			};
 		}
+		return new SoundMonitor() {
+			
+			@Override
+			public boolean isDone() {
+				return true;
+			}
+
+			@Override
+			public void addCloseListener(ActionListener listener) {}
+
+			@Override
+			public void removeCloseListener(ActionListener listener) {}
+
+			@Override
+			public void setVolume(double volume) {}
+
+			@Override
+			public void stop() {}
+		};
 	}
 
 	/* (non-Javadoc)
@@ -311,21 +293,9 @@ public class SpriteImplementation implements Sprite{
 			});
 			
 			// Adjust volume of active clips.
-			synchronized(activeClips) {
-				for(Clip clip:activeClips) {
-				    if(clip.isControlSupported(FloatControl.Type.VOLUME)) {
-					    FloatControl control = (FloatControl)clip.getControl(FloatControl.Type.VOLUME);
-					    if(control!=null)
-					    		control.setValue(control.getMinimum()+(float)volume*(control.getMaximum()-control.getMinimum())/100);
-				    }
-				    else if(clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-					    FloatControl control = (FloatControl)clip.getControl(FloatControl.Type.MASTER_GAIN);
-					    if(control!=null)
-					    		control.setValue(Math.min(control.getMinimum()-(float)volume*control.getMinimum()/100,control.getMaximum()));
-				    }
-				    else {
-				    		System.err.println("Neither VOLUME nor MASTER_GAIN controls supported for clip.");
-				    }
+			synchronized(activeSoundMonitors) {
+				for(SoundMonitor soundMonitor:activeSoundMonitors) {
+					soundMonitor.setVolume(volume);
 				}
 			}
 		}
