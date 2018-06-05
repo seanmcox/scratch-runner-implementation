@@ -15,11 +15,8 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,24 +25,18 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeMap;
 
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
 import javax.media.Manager;
-import javax.media.MediaLocator;
+import javax.media.NoPlayerException;
 import javax.media.Player;
 import javax.media.Time;
 import javax.media.protocol.DataSource;
 import javax.media.protocol.InputSourceStream;
-import javax.media.protocol.PullBufferDataSource;
-import javax.media.protocol.PullBufferStream;
 import javax.media.protocol.PullDataSource;
 import javax.media.protocol.PullSourceStream;
 import javax.sound.sampled.AudioFormat;
@@ -53,7 +44,6 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.DataLine;
-import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
@@ -68,24 +58,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
-import org.apache.batik.anim.dom.SVGDOMImplementation;
-import org.apache.batik.bridge.BridgeContext;
-import org.apache.batik.bridge.GVTBuilder;
-import org.apache.batik.bridge.UserAgentAdapter;
-import org.apache.batik.gvt.GraphicsNode;
-import org.apache.batik.transcoder.TranscoderException;
-import org.apache.batik.transcoder.TranscoderInput;
-import org.apache.batik.transcoder.TranscoderOutput;
-import org.apache.batik.transcoder.image.PNGTranscoder;
-import org.apache.batik.util.XMLResourceDescriptor;
-import org.w3c.dom.DOMImplementation;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.svg.SVGDocument;
 
 import com.shtick.util.tokenizers.json.NumberToken;
 import com.shtick.utils.data.json.JSONDecoder;
@@ -98,6 +71,7 @@ import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
+import com.shtick.utils.scratch.runner.core.SoundMonitor;
 import com.shtick.utils.scratch.runner.core.Opcode.DataType;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
@@ -153,7 +127,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	private Stack<JPanel> frameStack = new Stack<>();
 	private BubbleImage bubbleImage;
 	private ScratchFile scratchFile;
-	private HashSet<Clip> activeClips = new HashSet<>(10);
+	private HashSet<SoundMonitor> activeSoundMonitors = new HashSet<>(10);
 	private HashSet<Integer> pressedKeys = new HashSet<>(10);
 	private boolean mouseDown = false;
 	
@@ -871,88 +845,27 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 * @throws UnsupportedAudioFileException
 	 * @throws LineUnavailableException
 	 */
-	public Clip playSound(String resourceName, double volume) throws IOException, UnsupportedAudioFileException, LineUnavailableException{
+	public SoundMonitor playSound(String resourceName, double volume) throws IOException, UnsupportedAudioFileException, LineUnavailableException{
+	    SoundMonitor retval=null;
+	    LinkedList<Throwable> errors = new LinkedList<Throwable>();
+
+	    InputStream in = new BufferedInputStream(scratchFile.getResource(resourceName));
+	    try {
 		    AudioInputStream stream;
 		    AudioFormat format;
 		    DataLine.Info info;
 		    Clip clip;
-
-		    InputStream in = new BufferedInputStream(scratchFile.getResource(resourceName));
-		    try {
-		    		stream = AudioSystem.getAudioInputStream(in);
-		    }
-		    catch(UnsupportedAudioFileException t) {
-		    		in.close();
-//		    		InputSourceStream iss = new InputSourceStream(new BufferedInputStream(scratchFile.getResource(resourceName)), null);
-//		    		DataSource ds=new PullDataSource() {
-//						
-//						@Override
-//						public void stop() throws IOException {
-//							// TODO Auto-generated method stub
-//							
-//						}
-//						
-//						@Override
-//						public void start() throws IOException {
-//							// TODO Auto-generated method stub
-//							
-//						}
-//						
-//						@Override
-//						public Time getDuration() {
-//							// TODO Auto-generated method stub
-//							return null;
-//						}
-//						
-//						@Override
-//						public Object[] getControls() {
-//							// TODO Auto-generated method stub
-//							return null;
-//						}
-//						
-//						@Override
-//						public Object getControl(String arg0) {
-//							// TODO Auto-generated method stub
-//							return null;
-//						}
-//						
-//						@Override
-//						public String getContentType() {
-//							// TODO Auto-generated method stub
-//							return null;
-//						}
-//						
-//						@Override
-//						public void disconnect() {
-//							iss.close();
-//						}
-//						
-//						@Override
-//						public void connect() throws IOException {}
-//						
-//						@Override
-//						public PullSourceStream[] getStreams() {
-//							return new PullSourceStream[] {iss};
-//						}
-//					};
-//		    		Player m_Player = Manager.createPlayer(ds);
-//		    		m_Player.start();
-//		    		m_Player.getControl(arg0)
-		    		System.err.println(resourceName);
-		    		t.printStackTrace();
-		    		return null;
-		    }
-		    
+    		stream = AudioSystem.getAudioInputStream(in);
 		    format = stream.getFormat();
 		    info = new DataLine.Info(Clip.class, format);
-		    synchronized(activeClips) {
+		    synchronized(activeSoundMonitors) {
 			    clip = (Clip) AudioSystem.getLine(info);
 			    clip.addLineListener(new LineListener() {
 					@Override
 					public void update(LineEvent event) {
 						if((event.getType()==LineEvent.Type.STOP)||(event.getType()==LineEvent.Type.CLOSE)) {
-							synchronized(activeClips) {
-								activeClips.remove(clip);
+							synchronized(activeSoundMonitors) {
+								activeSoundMonitors.remove(clip);
 								if(event.getType()==LineEvent.Type.STOP) {
 									clip.close();
 								}
@@ -961,25 +874,91 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 					}
 				});
 			    clip.open(stream);
-			    if(clip.isControlSupported(FloatControl.Type.VOLUME)) {
-				    FloatControl control = (FloatControl)clip.getControl(FloatControl.Type.VOLUME);
-				    if(control!=null)
-				    		control.setValue(control.getMinimum()+(float)volume*(control.getMaximum()-control.getMinimum())/100);
-			    }
-			    else if(clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-				    FloatControl control = (FloatControl)clip.getControl(FloatControl.Type.MASTER_GAIN);
-				    if(control!=null)
-			    		control.setValue(Math.min(control.getMinimum()-(float)volume*control.getMinimum()/100,control.getMaximum()));
-			    }
-			    else {
-			    		System.err.println("Neither VOLUME nor MASTER_GAIN controls supported for clip; "+resourceName);
-			    }
-				TASK_QUEUE.invokeLater(()->{
-				    clip.start();
-				});
-			    activeClips.add(clip);
+			    retval = new ClipSoundMonitor(clip);
 		    }
-		    return clip;
+	    }
+	    catch(UnsupportedAudioFileException t) {
+	    	// Save error to report just in case of total failure.
+	    	errors.add(t);
+	    }
+	    if(retval == null) {
+	    	in.close();
+	    }
+		InputSourceStream iss = new InputSourceStream(new BufferedInputStream(scratchFile.getResource(resourceName)), null);
+	    if(retval==null) {
+    		DataSource ds=new PullDataSource() {
+				
+				@Override
+				public void stop() throws IOException {
+				}
+				
+				@Override
+				public void start() throws IOException {
+				}
+				
+				@Override
+				public Time getDuration() {
+					return null;
+				}
+				
+				@Override
+				public Object[] getControls() {
+					return null;
+				}
+				
+				@Override
+				public Object getControl(String arg0) {
+					return null;
+				}
+				
+				@Override
+				public String getContentType() {
+					return null;
+				}
+				
+				@Override
+				public void disconnect() {
+					try {
+						iss.close();
+					}
+					catch(IOException t) {
+					}
+				}
+				
+				@Override
+				public void connect() throws IOException {}
+				
+				@Override
+				public PullSourceStream[] getStreams() {
+					return new PullSourceStream[] {iss};
+				}
+			};
+			try {
+	    		Player player = Manager.createPlayer(ds);
+	    		retval = new JMFSoundMonitor(player);
+			}
+			catch(NoPlayerException t) {
+		    	// Save error to report just in case of total failure.
+		    	errors.add(t);
+			}
+	    }
+	    if(retval == null) {
+	    	iss.close();
+	    }
+	    if(retval==null) {
+	    	for(Throwable error:errors) {
+	    		error.printStackTrace();
+	    	}
+	    	return null;
+	    }
+	    if(volume>100)
+		    retval.setVolume(100);
+	    else if(volume<0)
+		    retval.setVolume(0);
+	    else
+	    	retval.setVolume(volume);
+	    activeSoundMonitors.add(retval);
+	    return retval;
 	}
 
 	/* (non-Javadoc)
@@ -987,12 +966,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 */
 	@Override
 	public void stopAllSounds() {
-	    synchronized(activeClips) {
-	    		for(Clip clip:activeClips) {
-	    			clip.stop();
-	    			clip.close();
-	    		}
-	    		activeClips.clear();
+	    synchronized(activeSoundMonitors) {
+    		for(SoundMonitor soundMonitor:activeSoundMonitors)
+    			soundMonitor.stop();
+    		activeSoundMonitors.clear();
 	    }
 	}
 
