@@ -151,9 +151,8 @@ public class StageImplementation implements Stage{
 	}
 
 	private SoundMonitor playSound(SoundImplementation sound) {
-		String resourceName = sound.getResourceName();
 		try {
-			final SoundMonitor monitor = ScratchRuntimeImplementation.getScratchRuntime().playSound(resourceName,volume);
+			final SoundMonitor monitor = ScratchRuntimeImplementation.getScratchRuntime().playSound(sound,volume);
 			if(monitor!=null) {
 				activeSoundMonitors.add(monitor);
 				monitor.addCloseListener(new ActionListener() {

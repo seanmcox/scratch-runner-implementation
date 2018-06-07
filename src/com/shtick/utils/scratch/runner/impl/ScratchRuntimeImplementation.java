@@ -16,7 +16,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -838,24 +837,24 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 
 	/**
 	 * 
-	 * @param resourceName
+	 * @param sound 
 	 * @param volume 
 	 * @return The Clip
 	 * @throws IOException
 	 * @throws UnsupportedAudioFileException
 	 * @throws LineUnavailableException
 	 */
-	public SoundMonitor playSound(String resourceName, double volume) throws IOException, UnsupportedAudioFileException, LineUnavailableException{
+	public SoundMonitor playSound(SoundImplementation sound, double volume) throws IOException, UnsupportedAudioFileException, LineUnavailableException{
 	    SoundMonitor retval=null;
 	    LinkedList<Throwable> errors = new LinkedList<Throwable>();
 
-	    InputStream in = new BufferedInputStream(scratchFile.getResource(resourceName));
+	    InputStream in = sound.getSoundData();
 	    try {
 		    AudioInputStream stream;
 		    AudioFormat format;
 		    DataLine.Info info;
 		    Clip clip;
-    		stream = AudioSystem.getAudioInputStream(in);
+    		stream = AudioSystem.getAudioInputStream(sound.getSoundData());
 		    format = stream.getFormat();
 		    info = new DataLine.Info(Clip.class, format);
 		    synchronized(activeSoundMonitors) {
@@ -884,7 +883,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	    if(retval == null) {
 	    	in.close();
 	    }
-		InputSourceStream iss = new InputSourceStream(new BufferedInputStream(scratchFile.getResource(resourceName)), null);
+		InputSourceStream iss = new InputSourceStream(sound.getSoundData(), null);
 	    if(retval==null) {
     		DataSource ds=new PullDataSource() {
 				
@@ -1103,7 +1102,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			sounds = new SoundImplementation[list.size()];
 			int i=0;
 			for(Object object:list) {
-				sounds[i] = parseSound(object);
+				sounds[i] = parseSound(object, scratchFile);
 				i++;
 			}
 		}
@@ -1280,11 +1279,20 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		return new TupleImplementation(args);
 	}
 	
-	private static SoundImplementation parseSound(Object object) throws IOException{
+	private static SoundImplementation parseSound(Object object, ScratchFile scratchFile) throws IOException{
 		if(!(object instanceof java.util.Map<?,?>))
 			throw new IOException("sound not encoded as map.");
 		java.util.Map<String,Object> map = (java.util.Map<String,Object>)object;
-		return new SoundImplementation((String)map.get("soundName"), (Long)map.get("soundID"), (String)map.get("md5"), (Long)map.get("sampleCount"), (Long)map.get("rate"), (String)map.get("format"));
+
+		String md5 = (String)map.get("md5");
+		Long baseLayerID = (Long)map.get("soundID");
+		String[] filenameParts = md5.split("\\.",2);
+		if(filenameParts.length<2)
+			throw new IOException("Invalid sound md5: "+md5);
+		String resourceName = baseLayerID.toString()+"."+filenameParts[1];
+		byte[] data = scratchFile.getResource(resourceName).readAllBytes();
+		
+		return new SoundImplementation((String)map.get("soundName"), (Long)map.get("soundID"), (String)map.get("md5"), (Long)map.get("sampleCount"), (Long)map.get("rate"), (String)map.get("format"), data);
 	}
 	
 	private static CostumeImplementation parseCostume(Object object, ScratchFile scratchFile) throws IOException{
@@ -1420,7 +1428,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 			sounds = new SoundImplementation[list.size()];
 			int i=0;
 			for(Object object:list) {
-				sounds[i] = parseSound(object);
+				sounds[i] = parseSound(object, scratchFile);
 				i++;
 			}
 		}
