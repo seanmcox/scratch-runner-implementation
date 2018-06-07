@@ -3,6 +3,9 @@
  */
 package com.shtick.utils.scratch.runner.impl.elements;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
 import com.shtick.utils.scratch.runner.core.elements.Sound;
 
 /**
@@ -16,6 +19,7 @@ public class SoundImplementation implements Sound{
 	private long sampleCount;
 	private long rate;
 	private String format;
+	private byte[] soundData;
 	
 	/**
 	 * @param soundName
@@ -24,8 +28,9 @@ public class SoundImplementation implements Sound{
 	 * @param sampleCount
 	 * @param rate
 	 * @param format
+	 * @param soundData 
 	 */
-	public SoundImplementation(String soundName, long soundID, String md5, long sampleCount, long rate, String format) {
+	public SoundImplementation(String soundName, long soundID, String md5, long sampleCount, long rate, String format, byte[] soundData) {
 		super();
 		this.soundName = soundName;
 		this.soundID = soundID;
@@ -33,6 +38,7 @@ public class SoundImplementation implements Sound{
 		this.sampleCount = sampleCount;
 		this.rate = rate;
 		this.format = format;
+		this.soundData = soundData;
 	}
 
 	@Override
@@ -63,6 +69,14 @@ public class SoundImplementation implements Sound{
 	@Override
 	public String getFormat() {
 		return format;
+	}
+	
+	/**
+	 * 
+	 * @return An InoutStream containing the audio file data.
+	 */
+	public InputStream getSoundData() {
+		return new ByteArrayInputStream(soundData);
 	}
 	
 	String getResourceName(){

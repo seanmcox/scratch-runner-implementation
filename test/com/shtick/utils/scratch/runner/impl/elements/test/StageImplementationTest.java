@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
 import com.shtick.utils.scratch.runner.core.elements.Sprite;
+import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.ListImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.SoundImplementation;
@@ -29,6 +30,9 @@ public class StageImplementationTest {
 	 */
 	@Test
 	public void testConstructor() {
+		if(ScratchRuntimeImplementation.getScratchRuntime()==null) {
+			ScratchRuntimeImplementation runtime = new ScratchRuntimeImplementation();
+		}
 		{
 			String name = "egg";
 			StageImplementation stage = new StageImplementation(
@@ -65,7 +69,7 @@ public class StageImplementationTest {
 					},
 					listMap,
 					new SoundImplementation[] {
-							new SoundImplementation("testSound", 0,""+"testSound".hashCode(), 1, 1, "WAV")
+							new SoundImplementation("testSound", 0,""+"testSound".hashCode(), 1, 1, "WAV", new byte[0])
 					},
 					new CostumeImplementation[] {
 							new FakeCostume("coz", 0),
