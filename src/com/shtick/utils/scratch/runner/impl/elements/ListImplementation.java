@@ -6,7 +6,6 @@ package com.shtick.utils.scratch.runner.impl.elements;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 
 import com.shtick.utils.scratch.runner.core.elements.List;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
@@ -22,7 +21,7 @@ public class ListImplementation implements List{
 	private Double y;
 	private Double width;
 	private Double height;
-	private Boolean visible;
+	private boolean visible;
 	
 	/**
 	 * @param listName
@@ -33,7 +32,7 @@ public class ListImplementation implements List{
 	 * @param height
 	 * @param visible
 	 */
-	public ListImplementation(String listName, Object[] contents, Double x, Double y, Double width, Double height, Boolean visible) {
+	public ListImplementation(String listName, Object[] contents, Double x, Double y, Double width, Double height, boolean visible) {
 		super();
 		this.listName = listName;
 		this.contents = new ArrayList<>(contents.length);
@@ -99,6 +98,16 @@ public class ListImplementation implements List{
 			contents.remove(index-1);
 			if(visible)
 				ScratchRuntimeImplementation.getScratchRuntime().repaintStage();
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.elements.List#deleteAll()
+	 */
+	@Override
+	public void deleteAll() {
+		synchronized(contents) {
+			contents.clear();
 		}
 	}
 
