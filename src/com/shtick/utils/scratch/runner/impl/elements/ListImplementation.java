@@ -3,6 +3,8 @@
  */
 package com.shtick.utils.scratch.runner.impl.elements;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 
@@ -34,7 +36,7 @@ public class ListImplementation implements List{
 	public ListImplementation(String listName, Object[] contents, Double x, Double y, Double width, Double height, Boolean visible) {
 		super();
 		this.listName = listName;
-		this.contents = new LinkedList<>();
+		this.contents = new ArrayList<>(contents.length);
 		for(Object content:contents)
 			this.contents.add(content);
 		this.x = x;
@@ -47,7 +49,7 @@ public class ListImplementation implements List{
 	private ListImplementation(ListImplementation listImplementation) {
 		synchronized(listImplementation) {
 			this.listName = listImplementation.listName;
-			this.contents = new LinkedList<>();
+			this.contents = new ArrayList<>();
 			synchronized(listImplementation.contents) {
 				for(Object content:listImplementation.contents)
 					this.contents.add(content);
@@ -77,7 +79,7 @@ public class ListImplementation implements List{
 	 */
 	@Override
 	public Iterator<Object> iterator() {
-		return new LinkedList<Object>(contents).iterator();
+		return Collections.unmodifiableList(contents).iterator();
 	}
 
 	/* (non-Javadoc)
