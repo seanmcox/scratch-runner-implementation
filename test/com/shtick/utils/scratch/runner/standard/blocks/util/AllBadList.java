@@ -77,6 +77,14 @@ public class AllBadList implements List {
 	}
 
 	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.elements.List#deleteAll()
+	 */
+	@Override
+	public void deleteAll() {
+		throw new UnsupportedOperationException("Called deleteAll when not expected.");
+	}
+
+	/* (non-Javadoc)
 	 * @see com.shtick.utils.scratch.runner.core.elements.List#addItem(java.lang.Object, int)
 	 */
 	@Override
