@@ -5,20 +5,10 @@ package com.shtick.utils.scratch.runner.impl.elements.test;
 
 import static org.junit.Assert.*;
 
-import java.util.HashMap;
-
 import org.junit.Test;
 
-import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
-import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
-import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.ListImplementation;
-import com.shtick.utils.scratch.runner.impl.elements.SoundImplementation;
-import com.shtick.utils.scratch.runner.impl.elements.SpriteImplementation;
-import com.shtick.utils.scratch.runner.impl.elements.StageImplementation;
-import com.shtick.utils.scratch.runner.impl.elements.VariableImplementation;
-import com.shtick.utils.scratch.runner.standard.blocks.util.AllBadSprite;
 
 /**
  * @author sean.cox

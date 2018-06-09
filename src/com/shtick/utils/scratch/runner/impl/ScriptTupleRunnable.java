@@ -246,16 +246,12 @@ public class ScriptTupleRunnable implements Runnable {
 								throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 							break;
 						case OBJECTS:
-							Object[] newArguments = new Object[types.length];
-							for(int j=0;j<types.length-1;j++)
-								newArguments[j] = arguments.get(j);
 							Object[] objects = new Object[arguments.size()-types.length+1];
 							for(int j=0;j<objects.length;j++) {
 								objects[j] = getValue(yieldingScript.context,arguments.get(i+j),yieldingScript.localVariables);
 								if(!((objects[j] instanceof Boolean)||(objects[j] instanceof Number)||(objects[j] instanceof String)))
 									throw new InvalidScriptDefinitionException("Non-object provided where object expected.");
 							}
-							executableArguments = newArguments;
 							executableArguments[i] = objects;
 							break;
 						case STRING:
