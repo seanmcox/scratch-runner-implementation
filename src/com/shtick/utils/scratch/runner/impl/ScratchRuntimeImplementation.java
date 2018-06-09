@@ -16,6 +16,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1290,7 +1291,21 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(filenameParts.length<2)
 			throw new IOException("Invalid sound md5: "+md5);
 		String resourceName = baseLayerID.toString()+"."+filenameParts[1];
-		byte[] data = scratchFile.getResource(resourceName).readAllBytes();
+		byte[] data;
+		{ // TODO If dropping Java 8 compatibility. In Java 9 there s a readAllBytes function that would be nice to use.
+			byte[] buffer = new byte[1024];
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			int l;
+			try(InputStream in = scratchFile.getResource(resourceName)){
+				l = in.read(buffer);
+				while(l>=0) {
+					if(l>0)
+						out.write(buffer, 0, l);
+					l = in.read(buffer);
+				}
+			}
+			data = out.toByteArray();
+		}
 		
 		return new SoundImplementation((String)map.get("soundName"), (Long)map.get("soundID"), (String)map.get("md5"), (Long)map.get("sampleCount"), (Long)map.get("rate"), (String)map.get("format"), data);
 	}
