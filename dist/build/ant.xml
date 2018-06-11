@@ -16,7 +16,9 @@
                 <attribute name="Bundle-Activator" value="com.shtick.utils.scratch.runner.impl.bundle.Activator"/>
                 <attribute name="Import-Package" value="javax.imageio,javax.imageio.stream,javax.sound.sampled,javax.swing,org.osgi.framework,com.shtick.utils.scratch.runner.core,com.shtick.utils.scratch.runner.core.elements,com.shtick.utils.scratch.runner.core.elements.control"/>
             </manifest>
-            <fileset dir="../../bin"/>
+            <fileset dir="../../bin/runtime"/>
+            <fileset dir="../../bin/osgi"/>
+            <fileset dir="../../bin/app"/>
             <zipfileset excludes="META-INF/*.SF" src="${dir.project}/lib/batik-1.9-bin/lib/batik-ext-1.9.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${dir.project}/lib/batik-1.9-bin/lib/batik-dom-1.9.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${dir.project}/lib/batik-1.9-bin/lib/batik-css-1.9.jar"/>

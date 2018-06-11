@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="src" output="testBin" path="test"/>
+	<classpathentry kind="src" output="bin/osgi" path="src/osgi"/>
+	<classpathentry kind="src" output="bin/runtime" path="src/runtime"/>
+	<classpathentry kind="src" output="bin/app" path="src/app"/>
+	<classpathentry kind="src" output="bin/test" path="src/test"/>
 	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-anim-1.9.jar" sourcepath="lib/batik-1.9-src/batik-anim/src/main"/>
 	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-awt-util-1.9.jar"/>
 	<classpathentry kind="lib" path="lib/batik-1.9-bin/lib/batik-bridge-1.9.jar"/>
@@ -30,5 +32,4 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="/scratch-runner-main/dist/install/plain/lib/org.apache.felix.main-5.6.10.jar"/>
-	<classpathentry kind="output" path="bin"/>
 </classpath>
