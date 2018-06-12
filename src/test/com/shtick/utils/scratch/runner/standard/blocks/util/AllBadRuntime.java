@@ -10,6 +10,8 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Point2D.Double;
 
+import javax.swing.JPanel;
+
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
@@ -78,6 +80,46 @@ public class AllBadRuntime implements ScratchRuntime {
 	@Override
 	public int getStageHeight() {
 		throw new UnsupportedOperationException("Called getStageHeight when not expected.");
+	}
+
+	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntime#getStagePanel()
+	 */
+	@Override
+	public JPanel getStagePanel() {
+		throw new UnsupportedOperationException("Called getStagePanel when not expected.");
+	}
+
+	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntime#start()
+	 */
+	@Override
+	public void start() {
+		throw new UnsupportedOperationException("Called start when not expected.");
+	}
+
+	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntime#isRunning()
+	 */
+	@Override
+	public boolean isRunning() {
+		throw new UnsupportedOperationException("Called isRunning when not expected.");
+	}
+
+	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntime#stop()
+	 */
+	@Override
+	public void stop() {
+		throw new UnsupportedOperationException("Called stop when not expected.");
+	}
+
+	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntime#isStopped()
+	 */
+	@Override
+	public boolean isStopped() {
+		throw new UnsupportedOperationException("Called isStopped when not expected.");
 	}
 
 	/* (non-Javadoc)

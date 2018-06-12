@@ -42,6 +42,7 @@ import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -449,29 +450,18 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		}
 	}
 
-	// TODO Add an stop start listening mechanism.
-	
-	/**
-	 * 
-	 * @return true if stop has been called and false otherwise.
-	 */
+	@Override
 	public boolean isStopped() {
 		return stopped;
 	}
-	
-	/**
-	 * 
-	 * @return true if the project is currently running (start has been called, and stop hasn't been called since) and false otherwise.
-	 */
+
+	@Override
 	public boolean isRunning() {
 		return running;
 	}
-	
-	/**
-	 * 
-	 * @return The StagePanel for this ScratchRuntimeImplementation
-	 */
-	public StagePanel getStagePanel() {
+
+	@Override
+	public JPanel getStagePanel() {
 		return stagePanel;
 	}
 

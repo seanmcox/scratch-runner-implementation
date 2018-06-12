@@ -6,9 +6,7 @@ import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 
-import com.shtick.utils.scratch.runner.Main;
-import com.shtick.utils.scratch.runner.core.ScratchRuntime;
-import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
+import com.shtick.utils.scratch.runner.impl.ScratchRuntimeFactoryImplementation;
 
 /**
  **/
@@ -39,7 +37,7 @@ public class Activator implements BundleActivator {
 		OPCODE_TRACKER = new OpcodeTracker(context);
 		GRAPHIC_EFFECT_TRACKER = new GraphicEffectTracker(context);
 		STAGE_MONITOR_COMMAND_TRACKER = new StageMonitorCommandTracker(context);
-		runtimeRegistration=context.registerService(com.shtick.utils.scratch.runner.core.Main.class.getName(), new Main(),new Hashtable<String, String>());
+		runtimeRegistration=context.registerService(com.shtick.utils.scratch.runner.core.ScratchRuntimeFactory.class.getName(), new ScratchRuntimeFactoryImplementation(),new Hashtable<String, String>());
     }
 
     /**
