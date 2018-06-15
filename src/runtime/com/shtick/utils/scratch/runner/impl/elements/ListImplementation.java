@@ -8,7 +8,11 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import com.shtick.utils.scratch.runner.core.elements.List;
+import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
+import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
+import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
+import com.shtick.utils.scratch.runner.impl.ui.ListMonitor;
 
 /**
  * @author sean.cox
@@ -23,6 +27,8 @@ public class ListImplementation implements List{
 	private Double height;
 	private boolean visible;
 	private ScratchRuntimeImplementation runtime;
+	private ListMonitor monitor;
+	private boolean monitorCalculated = false;
 	
 	/**
 	 * @param listName
@@ -45,7 +51,7 @@ public class ListImplementation implements List{
 		this.width = width;
 		this.height = height;
 		this.visible = visible;
-		this.runtime = runtime;
+		this.runtime = runtime;		
 	}
 	
 	private ListImplementation(ListImplementation listImplementation) {
@@ -111,6 +117,8 @@ public class ListImplementation implements List{
 	public void deleteAll() {
 		synchronized(contents) {
 			contents.clear();
+			if(visible)
+				runtime.repaintStage();
 		}
 	}
 
@@ -193,7 +201,43 @@ public class ListImplementation implements List{
 	 */
 	@Override
 	public void setVisible(boolean visible) {
+		if(this.visible==visible)
+			return;
 		this.visible = visible;
+		runtime.repaintStage();
+		// This is done here to ensure it gets done, so that the listeners on the component only capture the input when expected.
+		if(monitorCalculated&&(monitor!=null))
+			monitor.setVisible(visible);
+	}
+	
+	/**
+	 * 
+	 * @return The ListMonitor (instance of Component) for this list.
+	 */
+	public ListMonitor getMonitor() {
+		if(!monitorCalculated) {
+			ScriptContext context = null;
+			if(runtime.getCurrentStage().getContextListByName(listName)!=null) {
+				context = runtime.getCurrentStage();
+			}
+			else {
+				for(RenderableChild child:runtime.getAllRenderableChildren()) {
+					if(child instanceof Sprite) {
+						Sprite sprite = (Sprite)child;
+						if(sprite.getContextListByName(listName)!=null) {
+							context = sprite;
+							break;
+						}
+					}
+				}
+			}
+	
+			if(context!=null)
+				monitor = new ListMonitor(this, context);
+			monitorCalculated = true;
+			monitor.setVisible(visible);
+		}
+		return monitor;
 	}
 
 	/* (non-Javadoc)

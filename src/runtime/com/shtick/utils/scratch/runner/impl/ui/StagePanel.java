@@ -20,7 +20,6 @@ import javax.swing.JPanel;
 import com.shtick.utils.scratch.runner.core.GraphicEffect;
 import com.shtick.utils.scratch.runner.core.elements.List;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
-import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.core.elements.Stage;
 import com.shtick.utils.scratch.runner.core.elements.StageMonitor;
@@ -29,6 +28,7 @@ import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.bundle.GraphicEffectTracker;
 import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation.ImageAndArea;
+import com.shtick.utils.scratch.runner.impl.elements.ListImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.SpriteImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.StageMonitorImplementation;
 
@@ -82,27 +82,12 @@ public class StagePanel extends JPanel {
 			}
 			if(renderableChild instanceof List) {
 				List list = (List)renderableChild;
-				ScriptContext context = null;
-				if(runtime.getCurrentStage().getContextListByName(list.getListName())!=null) {
-					context = runtime.getCurrentStage();
-				}
-				else {
-					for(RenderableChild child:runtime.getAllRenderableChildren()) {
-						if(child instanceof Sprite) {
-							Sprite sprite = (Sprite)child;
-							if(sprite.getContextListByName(list.getListName())!=null) {
-								context = sprite;
-								break;
-							}
-						}
-					}
-				}
 				
-				if(context == null)
-					continue;
-				Component component = new ListMonitor(list,context);
-				renderableChildComponents.put(renderableChild,component);
-				add(component);
+				Component component = ((ListImplementation)list).getMonitor();
+				if(component!=null) {
+					renderableChildComponents.put(renderableChild,component);
+					add(component);
+				}
 				continue;
 			}
 		}
@@ -119,7 +104,6 @@ public class StagePanel extends JPanel {
 		}
 		g = buffer.getGraphics();
 		
-		long startTime = System.currentTimeMillis();
 		int width = getWidth();
 		int height = getHeight();
 		
@@ -150,9 +134,9 @@ public class StagePanel extends JPanel {
 		BubbleImage bubbleImage = runtime.getBubbleImage();
 		RenderableChild[] children = runtime.getAllRenderableChildren();
 		for(RenderableChild child:children) {
-			if(!child.isVisible())
-				continue;
 			if(child instanceof Sprite) {
+				if(!child.isVisible())
+					continue;
 				SpriteImplementation sprite = (SpriteImplementation) child;
 				synchronized(sprite.getSpriteLock()) {
 					ImageAndArea imageAndArea = sprite.getScaledAndRotatedImage();
@@ -189,6 +173,8 @@ public class StagePanel extends JPanel {
 			else {
 				Component component = renderableChildComponents.get(child);
 				if(component == null)
+					continue;
+				if(!child.isVisible())
 					continue;
 				synchronized(getTreeLock()) {
 					Rectangle cr;
