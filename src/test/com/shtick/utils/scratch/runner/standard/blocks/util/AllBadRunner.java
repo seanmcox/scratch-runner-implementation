@@ -5,7 +5,6 @@ package com.shtick.utils.scratch.runner.standard.blocks.util;
 
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
-import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 
 /**
@@ -33,14 +32,6 @@ public class AllBadRunner implements ScriptTupleRunner {
 	@Override
 	public boolean isStopped() {
 		throw new UnsupportedOperationException("Called isStopped when not expected.");
-	}
-
-	/* (non-Javadoc)
-	 * @see com.shtick.utils.scratch.runner.core.ScriptTupleRunner#getOpcode(com.shtick.utils.scratch.runner.core.elements.BlockTuple)
-	 */
-	@Override
-	public Opcode getOpcode(BlockTuple blockTuple) {
-		throw new UnsupportedOperationException("Called getOpcode when not expected.");
 	}
 
 	/* (non-Javadoc)

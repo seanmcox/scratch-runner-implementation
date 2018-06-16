@@ -23,7 +23,7 @@ import com.shtick.utils.scratch.runner.core.elements.control.JumpBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.LocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.ReadLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.TestBlockTuple;
-import com.shtick.utils.scratch.runner.impl.bundle.Activator;
+import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 
 /**
  * @author sean.cox
@@ -32,17 +32,20 @@ import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 public class ScriptTupleImplementation implements ScriptTuple {
 	private ScriptContext context;
 	private CloneableData cloneableData;
+	private ScratchRuntimeImplementation runtime;
 
 	/**
 	 * @param context 
 	 * @param blockTuples
+	 * @param runtime 
 	 * @throws InvalidScriptDefinitionException 
 	 */
-	public ScriptTupleImplementation(ScriptContext context, BlockTuple[] blockTuples) throws InvalidScriptDefinitionException{
+	public ScriptTupleImplementation(ScriptContext context, BlockTuple[] blockTuples, ScratchRuntimeImplementation runtime) throws InvalidScriptDefinitionException{
 		super();
 		this.context = context;
 		this.cloneableData = new CloneableData();
 		this.cloneableData.blockTuples = blockTuples;
+		this.runtime = runtime;
 		resolveScript();
 	}
 	
@@ -153,7 +156,7 @@ public class ScriptTupleImplementation implements ScriptTuple {
 		// Process block tuples, inflating control blocks.
 		for(BlockTuple blockTuple:blockTuples) {
 			String opcode = blockTuple.getOpcode();
-			Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+			Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
 			if(opcodeImplementation instanceof OpcodeControl) {
 				BlockTuple[] resolvedControl = ((OpcodeControl)opcodeImplementation).execute(blockTuple.getArguments());
 				largestRemappedLocalVarIncludingChildren = Math.max(

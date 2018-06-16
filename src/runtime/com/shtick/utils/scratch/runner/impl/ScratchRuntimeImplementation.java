@@ -58,13 +58,16 @@ import com.shtick.utils.data.json.JSONDecoder;
 import com.shtick.utils.data.json.JSONNumberDecoder;
 import com.shtick.utils.scratch.ScratchFile;
 import com.shtick.utils.scratch.ScratchImageRenderer;
+import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
+import com.shtick.utils.scratch.runner.core.OpcodeRegistry;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.SoundMonitor;
+import com.shtick.utils.scratch.runner.core.StageMonitorCommandRegistry;
 import com.shtick.utils.scratch.runner.core.Opcode.DataType;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
@@ -74,7 +77,6 @@ import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.core.elements.Stage;
 import com.shtick.utils.scratch.runner.core.elements.StageMonitor;
 import com.shtick.utils.scratch.runner.core.elements.Tuple;
-import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.elements.BlockTupleImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.ListImplementation;
@@ -96,6 +98,9 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	private final ThreadTaskQueue TASK_QUEUE = new ThreadTaskQueue();
 	private final ScriptTupleThread SCRIPT_TUPLE_THREAD = new ScriptTupleThread(this);
 	private StageImplementation stage;
+	private OpcodeRegistry opcodeRegistry;
+	private GraphicEffectRegistry graphicEffectRegistry;
+	private StageMonitorCommandRegistry stageMonitorCommandRegistry;
 	
 	/**
 	 * Map of named (non-clone) sprites.
@@ -252,13 +257,19 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 * @param projectFile 
 	 * @param stageWidth 
 	 * @param stageHeight 
+	 * @param opcodeRegistry 
+	 * @param graphicEffectRegistry 
+	 * @param stageMonitorCommandRegistry 
 	 * @throws IOException 
 	 * 
 	 */
-	public ScratchRuntimeImplementation(File projectFile, int stageWidth, int stageHeight) throws IOException{
-		loadProject(projectFile);
+	public ScratchRuntimeImplementation(File projectFile, int stageWidth, int stageHeight, OpcodeRegistry opcodeRegistry, GraphicEffectRegistry graphicEffectRegistry, StageMonitorCommandRegistry stageMonitorCommandRegistry) throws IOException{
 		this.stageWidth = stageWidth;
 		this.stageHeight = stageHeight;
+		this.opcodeRegistry = opcodeRegistry;
+		this.graphicEffectRegistry = graphicEffectRegistry;
+		this.stageMonitorCommandRegistry = stageMonitorCommandRegistry;
+		loadProject(projectFile);
 		
 		stagePanel = new StagePanel(this);
 	}
@@ -287,7 +298,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	}
 
 	private void greenFlagClicked() {
-		Set<Opcode> opcodes = Activator.OPCODE_TRACKER.getOpcodes();
+		Set<Opcode> opcodes = opcodeRegistry.getOpcodes();
 		for(Opcode opcode:opcodes) {
 			if(!(opcode instanceof OpcodeHat))
 				continue;
@@ -475,6 +486,27 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		return stageHeight;
 	}
 	
+	/**
+	 * @return the opcodeRegistry
+	 */
+	public OpcodeRegistry getOpcodeRegistry() {
+		return opcodeRegistry;
+	}
+
+	/**
+	 * @return the graphicEffectRegistry
+	 */
+	public GraphicEffectRegistry getGraphicEffectRegistry() {
+		return graphicEffectRegistry;
+	}
+
+	/**
+	 * @return the stageMonitorCommandRegistry
+	 */
+	public StageMonitorCommandRegistry getStageMonitorCommandRegistry() {
+		return stageMonitorCommandRegistry;
+	}
+
 	@Override
 	public Point2D.Double getMouseStagePosition(){
 		return new Point2D.Double(mouseStageX, mouseStageY);
@@ -918,7 +950,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(blockTuples.length>0) {
 			BlockTuple maybeHat = blockTuples[0];
 			String opcode = maybeHat.getOpcode();
-			Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+			Opcode opcodeImplementation = opcodeRegistry.getOpcode(opcode);
 			if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 				java.util.List<Object> arguments = maybeHat.getArguments();
 				Object[] executableArguments = new Object[arguments.size()];
@@ -953,7 +985,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 					}
 				}
 				try {
-					retval = new ScriptTupleImplementation(context, blockTuples);
+					retval = new ScriptTupleImplementation(context, blockTuples, this);
 				}
 				catch(InvalidScriptDefinitionException t) {
 					throw new IOException(t);

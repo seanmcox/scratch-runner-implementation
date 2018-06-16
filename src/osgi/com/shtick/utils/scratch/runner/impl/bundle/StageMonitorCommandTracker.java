@@ -14,6 +14,7 @@ import org.osgi.framework.ServiceListener;
 import org.osgi.framework.ServiceReference;
 
 import com.shtick.utils.scratch.runner.core.StageMonitorCommand;
+import com.shtick.utils.scratch.runner.core.StageMonitorCommandRegistry;
 
 /**
  * @author sean.cox
@@ -36,7 +37,7 @@ public class StageMonitorCommandTracker implements ServiceListener{
 				if(references!=null){
 					for(ServiceReference<?> ref:references){
 						try{
-							registerCommand(ref);
+							StageMonitorCommandRegistry.getStageMonitorCommandRegistry().registerStageMonitorCommand((StageMonitorCommand)bundleContext.getService(ref));
 						}
 						catch(AbstractMethodError t){
 							Object service=bundleContext.getService(ref);
@@ -52,73 +53,17 @@ public class StageMonitorCommandTracker implements ServiceListener{
 			throw new RuntimeException(t);
 		}
 	}
-	
-	/**
-	 * 
-	 * @param command
-	 * @return The Command with the given id.
-	 */
-	public StageMonitorCommand getCommand(String command){
-		ServiceReference<?> reference = commands.get(command);
-		if(reference==null)
-			return null;
-		return (StageMonitorCommand)bundleContext.getService(reference);
-	}
-	
-	/**
-	 * 
-	 * @return A set of already registered appFactories.
-	 */
-	public Set<StageMonitorCommand> getCommands(){
-		HashSet<StageMonitorCommand> retval=new HashSet<>();
-		synchronized(commands){
-			StageMonitorCommand service;
-			for(ServiceReference<?> reference:commands.values()){
-				service=(StageMonitorCommand)bundleContext.getService(reference);
-				retval.add(service);
-			}
-		}
-		return retval;
-	}
-	
-	/**
-	 * The caller of this method should be synchronized on the appFactoryServices object.
-	 * 
-	 * @param ref
-	 * @throws AbstractMethodError If the AppFactoryService is not compatible with this implementation of the AppTracker sufficient to be registered.
-	 */
-	private void registerCommand(ServiceReference<?> ref) throws AbstractMethodError{
-		Object service=bundleContext.getService(ref);
-		if(!(service instanceof StageMonitorCommand))
-			return;
-		StageMonitorCommand command=(StageMonitorCommand)service;
-		if(!commands.containsKey(command.getCommand()))
-			commands.put(command.getCommand(),(ServiceReference<StageMonitorCommand>)ref);
-	}
-
-	/**
-	 * The caller of this method should be synchronized on the appFactoryServices object.
-	 * 
-	 * @param ref
-	 */
-	private void unregisterCommand(ServiceReference<?> ref){
-		Object service=bundleContext.getService(ref);
-		if(!(service instanceof StageMonitorCommand))
-			return;
-		StageMonitorCommand command=(StageMonitorCommand)service;
-		commands.remove(command.getCommand());
-	}
 
 	@Override
 	public void serviceChanged(ServiceEvent event) {
 		synchronized(commands){
 			if(event.getType() == ServiceEvent.REGISTERED){
 				ServiceReference<?> ref=event.getServiceReference();
-				registerCommand(ref);
+				StageMonitorCommandRegistry.getStageMonitorCommandRegistry().registerStageMonitorCommand((StageMonitorCommand)bundleContext.getService(ref));
 			}
 			else if(event.getType() == ServiceEvent.UNREGISTERING){
 				ServiceReference<?> ref=event.getServiceReference();
-				unregisterCommand(ref);
+				StageMonitorCommandRegistry.getStageMonitorCommandRegistry().unregisterStageMonitorCommand((StageMonitorCommand)bundleContext.getService(ref));
 			}
 		}
 	}

@@ -15,15 +15,15 @@ public class Activator implements BundleActivator {
 	/**
 	 * A source for registered Opcodes.
 	 */
-	public static OpcodeTracker OPCODE_TRACKER;
+	private static OpcodeTracker OPCODE_TRACKER;
 	/**
 	 * A source for registered GraphicEffects
 	 */
-	public static GraphicEffectTracker GRAPHIC_EFFECT_TRACKER;
+	private static GraphicEffectTracker GRAPHIC_EFFECT_TRACKER;
 	/**
 	 * A source for registered GraphicEffects
 	 */
-	public static StageMonitorCommandTracker STAGE_MONITOR_COMMAND_TRACKER;
+	private static StageMonitorCommandTracker STAGE_MONITOR_COMMAND_TRACKER;
 	
     /**
      * Implements BundleActivator.start(). Prints

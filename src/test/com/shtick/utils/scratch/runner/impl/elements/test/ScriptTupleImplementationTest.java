@@ -6,6 +6,7 @@ package com.shtick.utils.scratch.runner.impl.elements.test;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +33,7 @@ import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeAction;
 import com.shtick.utils.scratch.runner.core.OpcodeControl;
+import com.shtick.utils.scratch.runner.core.OpcodeRegistry;
 import com.shtick.utils.scratch.runner.core.OpcodeSubaction;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
@@ -40,22 +42,40 @@ import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 import com.shtick.utils.scratch.runner.core.elements.control.BasicJumpBlockTuple;
-import com.shtick.utils.scratch.runner.core.elements.control.LocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.ReadLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.SetLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.TestBlockTuple;
-import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.bundle.OpcodeTracker;
 import com.shtick.utils.scratch.runner.impl.elements.BlockTupleImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.ScriptTupleImplementation;
+import com.shtick.utils.scratch.runner.standard.blocks.util.DummyScratchRuntimeImplementation;
 
 /**
  * @author sean.cox
  *
  */
 public class ScriptTupleImplementationTest {
+	private static final OpcodeRegistry OPCODE_REGISTRY= new OpcodeRegistry();
+	private static final DummyScratchRuntimeImplementation RUNTIME;
 	static {
-		Activator.OPCODE_TRACKER = new DumbyOpcodeTracker();
+		OPCODE_REGISTRY.registerOpcode(new NopOpcode("1"));
+		OPCODE_REGISTRY.registerOpcode(new NopOpcode("2"));
+		OPCODE_REGISTRY.registerOpcode(new NopOpcode("3"));
+		OPCODE_REGISTRY.registerOpcode(new NopOpcode("4"));
+		OPCODE_REGISTRY.registerOpcode(new NopOpcode("5"));
+		OPCODE_REGISTRY.registerOpcode(new NopOpcode());
+		OPCODE_REGISTRY.registerOpcode(new EmptyOpcode());
+		OPCODE_REGISTRY.registerOpcode(new SimpleWrapperOpcode());
+		OPCODE_REGISTRY.registerOpcode(new ForeverLoopOpcode());
+		OPCODE_REGISTRY.registerOpcode(new SkipOpcode());
+		OPCODE_REGISTRY.registerOpcode(new PointlessLocalOpcode());
+		OPCODE_REGISTRY.registerOpcode(new NestedPointlessLocalOpcode());
+		try {
+			RUNTIME = new DummyScratchRuntimeImplementation(480,360,OPCODE_REGISTRY,null,null);
+		}
+		catch(IOException t) {
+			throw new RuntimeException(t);
+		}
 	}
 
 	/**
@@ -73,7 +93,7 @@ public class ScriptTupleImplementationTest {
 		};
 		ScriptTupleImplementation tuple = null;
 		try {
-			tuple = new ScriptTupleImplementation(context, blockTuples);
+			tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 		}
 		catch(InvalidScriptDefinitionException t) {
 			t.printStackTrace();
@@ -98,7 +118,7 @@ public class ScriptTupleImplementationTest {
 		};
 		ScriptTupleImplementation tuple = null;
 		try {
-			tuple = new ScriptTupleImplementation(context, blockTuples);
+			tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 		}
 		catch(InvalidScriptDefinitionException t) {
 			t.printStackTrace();
@@ -122,7 +142,7 @@ public class ScriptTupleImplementationTest {
 		};
 		ScriptTupleImplementation tuple = null;
 		try {
-			tuple = new ScriptTupleImplementation(context, blockTuples);
+			tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 		}
 		catch(InvalidScriptDefinitionException t) {
 			t.printStackTrace();
@@ -145,7 +165,7 @@ public class ScriptTupleImplementationTest {
 			BlockTuple[] blockTuples = new BlockTuple[] {
 					new BlockTupleImplementation("nop",new ArrayList<>(0))
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertArrayEquals(blockTuples,resolved);
 		}
@@ -159,7 +179,7 @@ public class ScriptTupleImplementationTest {
 					new BlockTupleImplementation("nop",new ArrayList<>(0)),
 					new BlockTupleImplementation("nop",new ArrayList<>(0))
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertArrayEquals(blockTuples,resolved);
 		}
@@ -172,7 +192,7 @@ public class ScriptTupleImplementationTest {
 			BlockTuple[] blockTuples = new BlockTuple[] {
 					new BlockTupleImplementation("empty",new ArrayList<>(0))
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertArrayEquals(new BlockTuple[0], resolved);
 		}
@@ -187,7 +207,7 @@ public class ScriptTupleImplementationTest {
 					new BlockTupleImplementation("empty",new ArrayList<>(0)),
 					new BlockTupleImplementation("nop",new ArrayList<>(0))
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertArrayEquals(new BlockTuple[] {blockTuples[0],blockTuples[2]}, resolved);
 		}
@@ -205,7 +225,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertArrayEquals(blockTuplesNested, resolved);
 		}
@@ -223,7 +243,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(2,resolved.length);
 			assertEquals(blockTuplesNested[0], resolved[0]);
@@ -243,7 +263,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(2,resolved.length);
 			assertEquals(blockTuplesNested[0], resolved[1]);
@@ -271,7 +291,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(2,resolved.length);
 			assertTrue(resolved[1] instanceof BasicJumpBlockTuple);
@@ -291,7 +311,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(2,resolved.length);
 			assertTrue(resolved[0] instanceof BasicJumpBlockTuple);
@@ -314,7 +334,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(4,resolved.length);
 			assertTrue(resolved[1] instanceof BasicJumpBlockTuple);
@@ -339,7 +359,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(4,resolved.length);
 			assertTrue(resolved[3] instanceof BasicJumpBlockTuple);
@@ -374,7 +394,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(3,resolved.length);
 			assertTrue(resolved[1] instanceof BasicJumpBlockTuple);
@@ -401,7 +421,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(3,resolved.length);
 			assertTrue(resolved[0] instanceof BasicJumpBlockTuple);
@@ -426,7 +446,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(4,resolved.length);
 			assertTrue(resolved[1] instanceof BasicJumpBlockTuple);
@@ -451,7 +471,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			BlockTuple[] resolved = tuple.getResolvedBlockTuples();
 			assertEquals(4,resolved.length);
 			assertTrue(resolved[3] instanceof BasicJumpBlockTuple);
@@ -476,7 +496,7 @@ public class ScriptTupleImplementationTest {
 			BlockTuple[] blockTuples = new BlockTuple[] {
 					new BlockTupleImplementation("nop",new ArrayList<>(0))
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			assertEquals(0,tuple.getLocalVariableCount());
 		}
 		catch(InvalidScriptDefinitionException t){
@@ -489,7 +509,7 @@ public class ScriptTupleImplementationTest {
 					new BlockTupleImplementation("nop",new ArrayList<>(0)),
 					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0))
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			assertEquals(1,tuple.getLocalVariableCount());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
 		}
@@ -505,7 +525,7 @@ public class ScriptTupleImplementationTest {
 					new BlockTupleImplementation("nop",new ArrayList<>(0)),
 					new BlockTupleImplementation("pointlessLocal",new ArrayList<>(0))
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			assertEquals(1,tuple.getLocalVariableCount());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[3]).getLocalVarIdentifier().intValue());
@@ -527,7 +547,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			assertEquals(1,tuple.getLocalVariableCount());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[3]).getLocalVarIdentifier().intValue());
@@ -549,7 +569,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)})
 							)),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			assertEquals(2,tuple.getLocalVariableCount());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[1]).getLocalVarIdentifier().intValue());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[2]).getLocalVarIdentifier().intValue());
@@ -579,7 +599,7 @@ public class ScriptTupleImplementationTest {
 							Arrays.asList(blockTuplesNested)
 							}))),
 			};
-			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples);
+			ScriptTupleImplementation tuple = new ScriptTupleImplementation(context, blockTuples, RUNTIME);
 			assertEquals(2,tuple.getLocalVariableCount());
 			assertEquals(0,((SetLocalVarBlockTuple)tuple.getResolvedBlockTuples()[0]).getLocalVarIdentifier().intValue());
 			assertEquals(0,((ReadLocalVarBlockTuple)((TestBlockTuple)tuple.getResolvedBlockTuples()[1]).getArguments().get(0)).getLocalVarIdentifier().intValue());
@@ -594,20 +614,6 @@ public class ScriptTupleImplementationTest {
 	
 	private static class DumbyOpcodeTracker extends OpcodeTracker{
 		private static HashMap<String,Opcode> opcodes = new HashMap<>(10);
-		static {
-			opcodes.put("1",new NopOpcode());
-			opcodes.put("2",new NopOpcode());
-			opcodes.put("3",new NopOpcode());
-			opcodes.put("4",new NopOpcode());
-			opcodes.put("5",new NopOpcode());
-			opcodes.put("nop",new NopOpcode());
-			opcodes.put("empty",new EmptyOpcode());
-			opcodes.put("wrapper",new SimpleWrapperOpcode());
-			opcodes.put("foreverLoop",new ForeverLoopOpcode());
-			opcodes.put("skip",new SkipOpcode());
-			opcodes.put("pointlessLocal",new PointlessLocalOpcode());
-			opcodes.put("pointlessLocalNested", new NestedPointlessLocalOpcode());
-		}
 
 		public DumbyOpcodeTracker() {
 			super(new BundleContext() {
@@ -740,11 +746,6 @@ public class ScriptTupleImplementationTest {
 				}
 			});
 		}
-
-		@Override
-		public Opcode getOpcode(String opcodeID) {
-			return opcodes.get(opcodeID);
-		}
 	}
 	
 	private class AllBadScriptContext implements ScriptContext{
@@ -836,10 +837,19 @@ public class ScriptTupleImplementationTest {
 	}
 	
 	private static class NopOpcode implements OpcodeAction{
+		private String opcode;
+		
+		public NopOpcode() {
+			this.opcode = "nop";
+		}
+
+		public NopOpcode(String opcode) {
+			this.opcode = opcode;
+		}
 
 		@Override
 		public String getOpcode() {
-			return "nop";
+			return opcode;
 		}
 
 		@Override

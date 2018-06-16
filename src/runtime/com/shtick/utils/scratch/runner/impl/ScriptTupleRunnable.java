@@ -225,7 +225,7 @@ public class ScriptTupleRunnable implements Runnable {
 					//      The type checking at that point would be less comprehensive, probably, but this seems to be the direction I need to go to improve performance.
 					String opcode = tuple.getOpcode();
 					java.util.List<Object> arguments = tuple.getArguments();
-					Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+					Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
 					currentOpcode = opcodeImplementation;
 					DataType[] types = opcodeImplementation.getArgumentTypes();
 					Object[] executableArguments = new Object[Math.max(arguments.size(),types.length)];
@@ -363,8 +363,8 @@ public class ScriptTupleRunnable implements Runnable {
 		return retval;
 	}
 
-	private static Opcode getOpcode(BlockTuple blockTuple) {
-		return Activator.OPCODE_TRACKER.getOpcode(blockTuple.getOpcode());
+	private Opcode getOpcode(BlockTuple blockTuple) {
+		return runtime.getOpcodeRegistry().getOpcode(blockTuple.getOpcode());
 	}
 
 	/**
@@ -432,14 +432,6 @@ public class ScriptTupleRunnable implements Runnable {
 		@Override
 		public boolean isStopped() {
 			return (runnable==null)||runnable.stopped;
-		}
-
-		/* (non-Javadoc)
-		 * @see com.shtick.utils.scratch.runner.core.ScriptTupleRunner#getOpcode(com.shtick.utils.scratch.runner.core.elements.BlockTuple)
-		 */
-		@Override
-		public Opcode getOpcode(BlockTuple blockTuple) {
-			return ScriptTupleRunnable.getOpcode(blockTuple);
 		}
 
 		@Override
