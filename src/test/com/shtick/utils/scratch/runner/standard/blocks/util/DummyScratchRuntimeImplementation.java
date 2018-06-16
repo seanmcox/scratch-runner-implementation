@@ -6,6 +6,9 @@ package com.shtick.utils.scratch.runner.standard.blocks.util;
 import java.io.File;
 import java.io.IOException;
 
+import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
+import com.shtick.utils.scratch.runner.core.OpcodeRegistry;
+import com.shtick.utils.scratch.runner.core.StageMonitorCommandRegistry;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 
@@ -20,7 +23,22 @@ public class DummyScratchRuntimeImplementation extends ScratchRuntimeImplementat
 	 * @throws IOException
 	 */
 	public DummyScratchRuntimeImplementation() throws IOException {
-		super(null, 480, 360);
+		super(null, 480, 360, OpcodeRegistry.getOpcodeRegistry(), GraphicEffectRegistry.getGraphicEffectRegistry(), StageMonitorCommandRegistry.getStageMonitorCommandRegistry());
+	}
+
+	/**
+	 * 
+	 * @param stageWidth
+	 * @param stageHeight
+	 * @param opcodeRegistry
+	 * @param graphicEffectRegistry
+	 * @param stageMonitorCommandRegistry
+	 * @throws IOException
+	 */
+	public DummyScratchRuntimeImplementation(int stageWidth, int stageHeight,
+			OpcodeRegistry opcodeRegistry, GraphicEffectRegistry graphicEffectRegistry,
+			StageMonitorCommandRegistry stageMonitorCommandRegistry) throws IOException {
+		super(null, stageWidth, stageHeight, opcodeRegistry, graphicEffectRegistry, stageMonitorCommandRegistry);
 	}
 
 	/* (non-Javadoc)

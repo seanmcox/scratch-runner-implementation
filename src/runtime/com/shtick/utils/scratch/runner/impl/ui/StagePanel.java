@@ -18,6 +18,7 @@ import java.util.Map;
 import javax.swing.JPanel;
 
 import com.shtick.utils.scratch.runner.core.GraphicEffect;
+import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
 import com.shtick.utils.scratch.runner.core.elements.List;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
 import com.shtick.utils.scratch.runner.core.elements.Sprite;
@@ -25,8 +26,6 @@ import com.shtick.utils.scratch.runner.core.elements.Stage;
 import com.shtick.utils.scratch.runner.core.elements.StageMonitor;
 import com.shtick.utils.scratch.runner.impl.BubbleImage;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
-import com.shtick.utils.scratch.runner.impl.bundle.Activator;
-import com.shtick.utils.scratch.runner.impl.bundle.GraphicEffectTracker;
 import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation.ImageAndArea;
 import com.shtick.utils.scratch.runner.impl.elements.ListImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.SpriteImplementation;
@@ -156,9 +155,9 @@ public class StagePanel extends JPanel {
 					if(effects.size()>0) {
 						img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
 						img.getGraphics().drawImage(imageAndArea.image, 0, 0, null);
-						GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
+						GraphicEffectRegistry registry = runtime.getGraphicEffectRegistry();
 						for(String name:effects.keySet()) {
-							GraphicEffect effect = tracker.getGraphicEffect(name);
+							GraphicEffect effect = registry.getGraphicEffect(name);
 							if(effect==null) {
 								System.err.println("WARNING: Effect not found: "+name);
 								continue;

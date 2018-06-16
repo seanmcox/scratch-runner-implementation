@@ -22,6 +22,7 @@ import javax.swing.SwingUtilities;
 
 import com.shtick.utils.scratch.runner.core.AbstractSpriteListener;
 import com.shtick.utils.scratch.runner.core.GraphicEffect;
+import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
@@ -436,9 +437,9 @@ public class SpriteImplementation implements Sprite{
 			if(effectValues.size()>0) {
 				img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
 				img.getGraphics().drawImage(imageAndArea.image, 0, 0, null);
-				GraphicEffectTracker tracker = Activator.GRAPHIC_EFFECT_TRACKER;
+				GraphicEffectRegistry registry = runtime.getGraphicEffectRegistry();
 				for(String name:effectValues.keySet()) {
-					GraphicEffect effect = tracker.getGraphicEffect(name);
+					GraphicEffect effect = registry.getGraphicEffect(name);
 					if(effect==null) {
 						System.err.println("WARNING: Effect not found: "+name);
 						continue;
@@ -1013,7 +1014,7 @@ public class SpriteImplementation implements Sprite{
 					if(blockTuples.length>0) {
 						BlockTuple maybeHat = blockTuples[0];
 						String opcode = maybeHat.getOpcode();
-						Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+						Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
 						if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 							java.util.List<Object> arguments = maybeHat.getArguments();
 							Object[] executableArguments = new Object[arguments.size()];
@@ -1099,7 +1100,7 @@ public class SpriteImplementation implements Sprite{
 					BlockTuple maybeHat = blockTuples[0];
 					String opcode = maybeHat.getOpcode();
 					java.util.List<Object> arguments = maybeHat.getArguments();
-					Opcode opcodeImplementation = Activator.OPCODE_TRACKER.getOpcode(opcode);
+					Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
 					if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 						((OpcodeHat)opcodeImplementation).unregisterListeningScript(script, arguments.toArray(new Object[arguments.size()]));
 					}
