@@ -138,6 +138,10 @@ public class ScratchImageRenderer {
 			for(int i=0;i<textNodes.getLength();i++) {
 				Node textNode = textNodes.item(i);
 				Node transform = textNode.getAttributes().getNamedItem("transform");
+				Node fontSize = textNode.getAttributes().getNamedItem("font-size");
+				if(fontSize !=null)
+					continue;
+				// TODO Probably, setting the default font size is the best thing. ie. The Scratch default font size is probably different from the default of other renderers. (Or perhaps, the default font is larger then usual.)
 				if(transform == null)
 					continue;
 				String value = transform.getNodeValue().trim();
