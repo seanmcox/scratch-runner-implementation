@@ -156,7 +156,7 @@ public class ScriptTupleImplementation implements ScriptTuple {
 		// Process block tuples, inflating control blocks.
 		for(BlockTuple blockTuple:blockTuples) {
 			String opcode = blockTuple.getOpcode();
-			Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
+			Opcode opcodeImplementation = runtime.getFeatureSet().getOpcode(opcode);
 			if(opcodeImplementation instanceof OpcodeControl) {
 				BlockTuple[] resolvedControl = ((OpcodeControl)opcodeImplementation).execute(blockTuple.getArguments());
 				largestRemappedLocalVarIncludingChildren = Math.max(

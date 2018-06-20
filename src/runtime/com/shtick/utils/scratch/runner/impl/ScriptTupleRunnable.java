@@ -26,7 +26,6 @@ import com.shtick.utils.scratch.runner.core.elements.control.ReadLocalVarBlockTu
 import com.shtick.utils.scratch.runner.core.elements.control.SetLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.TestBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.TrueJumpBlockTuple;
-import com.shtick.utils.scratch.runner.impl.bundle.Activator;
 import com.shtick.utils.scratch.runner.impl.elements.ScriptTupleImplementation;
 
 /**
@@ -225,7 +224,7 @@ public class ScriptTupleRunnable implements Runnable {
 					//      The type checking at that point would be less comprehensive, probably, but this seems to be the direction I need to go to improve performance.
 					String opcode = tuple.getOpcode();
 					java.util.List<Object> arguments = tuple.getArguments();
-					Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
+					Opcode opcodeImplementation = runtime.getFeatureSet().getOpcode(opcode);
 					currentOpcode = opcodeImplementation;
 					DataType[] types = opcodeImplementation.getArgumentTypes();
 					Object[] executableArguments = new Object[Math.max(arguments.size(),types.length)];
@@ -364,7 +363,7 @@ public class ScriptTupleRunnable implements Runnable {
 	}
 
 	private Opcode getOpcode(BlockTuple blockTuple) {
-		return runtime.getOpcodeRegistry().getOpcode(blockTuple.getOpcode());
+		return runtime.getFeatureSet().getOpcode(blockTuple.getOpcode());
 	}
 
 	/**

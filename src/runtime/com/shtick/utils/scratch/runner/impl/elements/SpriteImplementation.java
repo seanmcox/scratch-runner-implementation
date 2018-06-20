@@ -21,8 +21,8 @@ import java.util.Set;
 import javax.swing.SwingUtilities;
 
 import com.shtick.utils.scratch.runner.core.AbstractSpriteListener;
+import com.shtick.utils.scratch.runner.core.FeatureSet;
 import com.shtick.utils.scratch.runner.core.GraphicEffect;
-import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
@@ -38,8 +38,6 @@ import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.core.elements.Tuple;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 import com.shtick.utils.scratch.runner.impl.ScriptTupleThread;
-import com.shtick.utils.scratch.runner.impl.bundle.Activator;
-import com.shtick.utils.scratch.runner.impl.bundle.GraphicEffectTracker;
 import com.shtick.utils.scratch.runner.impl.elements.CostumeImplementation.ImageAndArea;
 
 /**
@@ -437,9 +435,9 @@ public class SpriteImplementation implements Sprite{
 			if(effectValues.size()>0) {
 				img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
 				img.getGraphics().drawImage(imageAndArea.image, 0, 0, null);
-				GraphicEffectRegistry registry = runtime.getGraphicEffectRegistry();
+				FeatureSet featureSet = runtime.getFeatureSet();
 				for(String name:effectValues.keySet()) {
-					GraphicEffect effect = registry.getGraphicEffect(name);
+					GraphicEffect effect = featureSet.getGraphicEffect(name);
 					if(effect==null) {
 						System.err.println("WARNING: Effect not found: "+name);
 						continue;
@@ -1014,7 +1012,7 @@ public class SpriteImplementation implements Sprite{
 					if(blockTuples.length>0) {
 						BlockTuple maybeHat = blockTuples[0];
 						String opcode = maybeHat.getOpcode();
-						Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
+						Opcode opcodeImplementation = runtime.getFeatureSet().getOpcode(opcode);
 						if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 							java.util.List<Object> arguments = maybeHat.getArguments();
 							Object[] executableArguments = new Object[arguments.size()];
@@ -1100,7 +1098,7 @@ public class SpriteImplementation implements Sprite{
 					BlockTuple maybeHat = blockTuples[0];
 					String opcode = maybeHat.getOpcode();
 					java.util.List<Object> arguments = maybeHat.getArguments();
-					Opcode opcodeImplementation = runtime.getOpcodeRegistry().getOpcode(opcode);
+					Opcode opcodeImplementation = runtime.getFeatureSet().getOpcode(opcode);
 					if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 						((OpcodeHat)opcodeImplementation).unregisterListeningScript(script, arguments.toArray(new Object[arguments.size()]));
 					}

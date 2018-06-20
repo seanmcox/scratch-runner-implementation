@@ -5,12 +5,13 @@ package com.shtick.utils.scratch.runner.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 
-import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
-import com.shtick.utils.scratch.runner.core.OpcodeRegistry;
+import com.shtick.utils.scratch.runner.core.FeatureLibrary;
+import com.shtick.utils.scratch.runner.core.FeatureSet;
+import com.shtick.utils.scratch.runner.core.FeatureSetGenerator;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScratchRuntimeFactory;
-import com.shtick.utils.scratch.runner.core.StageMonitorCommandRegistry;
 
 /**
  * @author scox
@@ -31,7 +32,15 @@ public class ScratchRuntimeFactoryImplementation implements ScratchRuntimeFactor
 	 */
 	@Override
 	public ScratchRuntime createScratchRuntime(File projectFile, int stageWidth, int stageHeight) throws IOException{
-		return createScratchRuntime(projectFile, stageWidth, stageHeight, OpcodeRegistry.getOpcodeRegistry(), GraphicEffectRegistry.getGraphicEffectRegistry(), StageMonitorCommandRegistry.getStageMonitorCommandRegistry());
+		Collection<FeatureSetGenerator> generators = FeatureLibrary.getFeatureSetGenerators();
+		System.out.println("ScratchRuntimeFactoryImplementation: FeatureSetGenerators ("+generators.size()+")");
+		FeatureSet[] featureSets = new FeatureSet[generators.size()];
+		int i = 0;
+		for(FeatureSetGenerator generator:generators){
+			featureSets[i] = generator.generateFeatureSet();
+			i++;
+		}
+		return createScratchRuntime(projectFile, stageWidth, stageHeight, new AmalgamatedFeatureSet(featureSets));
 	}
 
 	/* (non-Javadoc)
@@ -39,9 +48,8 @@ public class ScratchRuntimeFactoryImplementation implements ScratchRuntimeFactor
 	 */
 	@Override
 	public ScratchRuntime createScratchRuntime(File projectFile, int stageWidth, int stageHeight,
-			OpcodeRegistry opcodeRegistry, GraphicEffectRegistry graphicEffectRegistry,
-			StageMonitorCommandRegistry stageMonitorCommandRegistry) throws IOException {
-		return new ScratchRuntimeImplementation(projectFile, stageWidth, stageHeight, opcodeRegistry, graphicEffectRegistry, stageMonitorCommandRegistry);
+			FeatureSet featureSet) throws IOException {
+		return new ScratchRuntimeImplementation(projectFile, stageWidth, stageHeight, featureSet);
 	}
 
 }

@@ -3,8 +3,6 @@
  */
 package com.shtick.utils.scratch.runner.standard.blocks.util;
 
-import com.shtick.utils.scratch.runner.core.ScratchRuntime;
-import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
 
@@ -13,21 +11,6 @@ import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
  *
  */
 public class AllBadValueListener implements ValueListener {
-	/* (non-Javadoc)
-	 * @see com.shtick.utils.scratch.runner.core.ValueListener#getRuntime()
-	 */
-	@Override
-	public ScratchRuntime getRuntime() {
-		throw new UnsupportedOperationException("Called getRuntime when not expected.");
-	}
-
-	/* (non-Javadoc)
-	 * @see com.shtick.utils.scratch.runner.core.ValueListener#getScriptRunner()
-	 */
-	@Override
-	public ScriptTupleRunner getScriptRunner() {
-		throw new UnsupportedOperationException("Called getScriptRunner when not expected.");
-	}
 
 	/* (non-Javadoc)
 	 * @see com.shtick.utils.scratch.runner.core.ValueListener#getScriptContext()

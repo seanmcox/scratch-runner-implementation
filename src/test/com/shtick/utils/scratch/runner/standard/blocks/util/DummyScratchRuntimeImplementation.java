@@ -5,11 +5,13 @@ package com.shtick.utils.scratch.runner.standard.blocks.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 
-import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
-import com.shtick.utils.scratch.runner.core.OpcodeRegistry;
-import com.shtick.utils.scratch.runner.core.StageMonitorCommandRegistry;
+import com.shtick.utils.scratch.runner.core.FeatureLibrary;
+import com.shtick.utils.scratch.runner.core.FeatureSet;
+import com.shtick.utils.scratch.runner.core.FeatureSetGenerator;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
+import com.shtick.utils.scratch.runner.impl.AmalgamatedFeatureSet;
 import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
 
 /**
@@ -23,22 +25,30 @@ public class DummyScratchRuntimeImplementation extends ScratchRuntimeImplementat
 	 * @throws IOException
 	 */
 	public DummyScratchRuntimeImplementation() throws IOException {
-		super(null, 480, 360, OpcodeRegistry.getOpcodeRegistry(), GraphicEffectRegistry.getGraphicEffectRegistry(), StageMonitorCommandRegistry.getStageMonitorCommandRegistry());
+		this(480, 360, getStandardFeatureSet());
 	}
 
 	/**
 	 * 
 	 * @param stageWidth
 	 * @param stageHeight
-	 * @param opcodeRegistry
-	 * @param graphicEffectRegistry
-	 * @param stageMonitorCommandRegistry
+	 * @param featureSet
 	 * @throws IOException
 	 */
 	public DummyScratchRuntimeImplementation(int stageWidth, int stageHeight,
-			OpcodeRegistry opcodeRegistry, GraphicEffectRegistry graphicEffectRegistry,
-			StageMonitorCommandRegistry stageMonitorCommandRegistry) throws IOException {
-		super(null, stageWidth, stageHeight, opcodeRegistry, graphicEffectRegistry, stageMonitorCommandRegistry);
+			FeatureSet featureSet) throws IOException {
+		super(null, stageWidth, stageHeight, featureSet);
+	}
+	
+	private static FeatureSet getStandardFeatureSet() {
+		Collection<FeatureSetGenerator> generators = FeatureLibrary.getFeatureSetGenerators();
+		FeatureSet[] featureSets = new FeatureSet[generators.size()];
+		int i = 0;
+		for(FeatureSetGenerator generator:generators){
+			featureSets[i] = generator.generateFeatureSet();
+			i++;
+		}
+		return new AmalgamatedFeatureSet(featureSets);
 	}
 
 	/* (non-Javadoc)
