@@ -273,7 +273,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(running)
 			return;
 		running = true;
-		System.out.println("Adding listeneres.");
 		stagePanel.addMouseMotionListener(primaryStageMouseMotionListener);
 		stagePanel.addMouseListener(primaryStageMouseListener);
 		stagePanel.addKeyListener(primaryStageKeyListener);

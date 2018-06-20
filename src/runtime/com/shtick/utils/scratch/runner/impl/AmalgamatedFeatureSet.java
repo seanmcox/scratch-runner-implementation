@@ -26,17 +26,13 @@ public class AmalgamatedFeatureSet implements FeatureSet {
 	 * @param featureSets
 	 */
 	public AmalgamatedFeatureSet(FeatureSet ... featureSets) {
-		System.out.println("AmalgamatedFeatureSet: registering feature sets ("+featureSets.length+")");
 		for(FeatureSet featureSet:featureSets) {
 			for(Opcode opcode:featureSet.getOpcodes())
 				opcodes.put(opcode.getOpcode(), opcode);
 			for(GraphicEffect graphicEffect:featureSet.getGraphicEffects())
 				graphicEffects.put(graphicEffect.getName(), graphicEffect);
-			System.out.println("AmalgamatedFeatureSet: registering StageMonitorCommands");
-			for(StageMonitorCommand stageMonitorCommand:featureSet.getStageMonitorCommands()) {
+			for(StageMonitorCommand stageMonitorCommand:featureSet.getStageMonitorCommands())
 				stageMonitorCommands.put(stageMonitorCommand.getCommand(), stageMonitorCommand);
-				System.out.println("AmalgamatedFeatureSet: registered StageMonitorCommand: "+stageMonitorCommand.getCommand());
-			}
 		}
 	}
 

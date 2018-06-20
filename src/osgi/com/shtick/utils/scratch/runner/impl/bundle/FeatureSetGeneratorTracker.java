@@ -24,7 +24,6 @@ public class FeatureSetGeneratorTracker implements ServiceListener{
 	 */
 	public FeatureSetGeneratorTracker(BundleContext bundleContext) {
 		super();
-		System.out.println("FeatureSetGeneratorTracker: constructor");
 		this.bundleContext = bundleContext;
 		try{
 			synchronized(bundleContext){
@@ -34,7 +33,6 @@ public class FeatureSetGeneratorTracker implements ServiceListener{
 					for(ServiceReference<?> ref:references){
 						try{
 							FeatureSetGenerator generator = (FeatureSetGenerator)bundleContext.getService(ref);
-							System.out.println("FeatureSetGeneratorTracker: init registering FeatureSetGenerator: "+generator.getFeatureSetName());
 							FeatureLibrary.registerFeatureSetGenerator(generator);
 						}
 						catch(AbstractMethodError t){
@@ -58,13 +56,11 @@ public class FeatureSetGeneratorTracker implements ServiceListener{
 			if(event.getType() == ServiceEvent.REGISTERED){
 				ServiceReference<?> ref=event.getServiceReference();
 				FeatureSetGenerator generator = (FeatureSetGenerator)bundleContext.getService(ref);
-				System.out.println("FeatureSetGeneratorTracker: ServiceChanged registering FeatureSetGenerator: "+generator.getFeatureSetName());
 				FeatureLibrary.registerFeatureSetGenerator(generator);
 			}
 			else if(event.getType() == ServiceEvent.UNREGISTERING){
 				ServiceReference<?> ref=event.getServiceReference();
 				FeatureSetGenerator generator = (FeatureSetGenerator)bundleContext.getService(ref);
-				System.out.println("FeatureSetGeneratorTracker: ServiceChanged unregistering FeatureSetGenerator: "+generator.getFeatureSetName());
 				FeatureLibrary.unregisterFeatureSetGenerator(generator);
 			}
 		}

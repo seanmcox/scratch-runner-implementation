@@ -33,7 +33,6 @@ public class ScratchRuntimeFactoryImplementation implements ScratchRuntimeFactor
 	@Override
 	public ScratchRuntime createScratchRuntime(File projectFile, int stageWidth, int stageHeight) throws IOException{
 		Collection<FeatureSetGenerator> generators = FeatureLibrary.getFeatureSetGenerators();
-		System.out.println("ScratchRuntimeFactoryImplementation: FeatureSetGenerators ("+generators.size()+")");
 		FeatureSet[] featureSets = new FeatureSet[generators.size()];
 		int i = 0;
 		for(FeatureSetGenerator generator:generators){
