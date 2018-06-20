@@ -58,16 +58,14 @@ import com.shtick.utils.data.json.JSONDecoder;
 import com.shtick.utils.data.json.JSONNumberDecoder;
 import com.shtick.utils.scratch.ScratchFile;
 import com.shtick.utils.scratch.ScratchImageRenderer;
-import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
+import com.shtick.utils.scratch.runner.core.FeatureSet;
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeHat;
-import com.shtick.utils.scratch.runner.core.OpcodeRegistry;
 import com.shtick.utils.scratch.runner.core.OpcodeUtils;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.SoundMonitor;
-import com.shtick.utils.scratch.runner.core.StageMonitorCommandRegistry;
 import com.shtick.utils.scratch.runner.core.Opcode.DataType;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
@@ -98,9 +96,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	private final ThreadTaskQueue TASK_QUEUE = new ThreadTaskQueue();
 	private final ScriptTupleThread SCRIPT_TUPLE_THREAD = new ScriptTupleThread(this);
 	private StageImplementation stage;
-	private OpcodeRegistry opcodeRegistry;
-	private GraphicEffectRegistry graphicEffectRegistry;
-	private StageMonitorCommandRegistry stageMonitorCommandRegistry;
+	private FeatureSet featureSet;
 	
 	/**
 	 * Map of named (non-clone) sprites.
@@ -257,18 +253,14 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 * @param projectFile 
 	 * @param stageWidth 
 	 * @param stageHeight 
-	 * @param opcodeRegistry 
-	 * @param graphicEffectRegistry 
-	 * @param stageMonitorCommandRegistry 
+	 * @param featureSet 
 	 * @throws IOException 
 	 * 
 	 */
-	public ScratchRuntimeImplementation(File projectFile, int stageWidth, int stageHeight, OpcodeRegistry opcodeRegistry, GraphicEffectRegistry graphicEffectRegistry, StageMonitorCommandRegistry stageMonitorCommandRegistry) throws IOException{
+	public ScratchRuntimeImplementation(File projectFile, int stageWidth, int stageHeight, FeatureSet featureSet) throws IOException{
 		this.stageWidth = stageWidth;
 		this.stageHeight = stageHeight;
-		this.opcodeRegistry = opcodeRegistry;
-		this.graphicEffectRegistry = graphicEffectRegistry;
-		this.stageMonitorCommandRegistry = stageMonitorCommandRegistry;
+		this.featureSet = featureSet;
 		loadProject(projectFile);
 		
 		stagePanel = new StagePanel(this);
@@ -281,7 +273,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(running)
 			return;
 		running = true;
-		System.out.println("Adding listeneres.");
 		stagePanel.addMouseMotionListener(primaryStageMouseMotionListener);
 		stagePanel.addMouseListener(primaryStageMouseListener);
 		stagePanel.addKeyListener(primaryStageKeyListener);
@@ -298,7 +289,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	}
 
 	private void greenFlagClicked() {
-		Set<Opcode> opcodes = opcodeRegistry.getOpcodes();
+		Set<Opcode> opcodes = featureSet.getOpcodes();
 		for(Opcode opcode:opcodes) {
 			if(!(opcode instanceof OpcodeHat))
 				continue;
@@ -487,24 +478,10 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	}
 	
 	/**
-	 * @return the opcodeRegistry
-	 */
-	public OpcodeRegistry getOpcodeRegistry() {
-		return opcodeRegistry;
-	}
-
-	/**
-	 * @return the graphicEffectRegistry
-	 */
-	public GraphicEffectRegistry getGraphicEffectRegistry() {
-		return graphicEffectRegistry;
-	}
-
-	/**
 	 * @return the stageMonitorCommandRegistry
 	 */
-	public StageMonitorCommandRegistry getStageMonitorCommandRegistry() {
-		return stageMonitorCommandRegistry;
+	public FeatureSet getFeatureSet() {
+		return featureSet;
 	}
 
 	@Override
@@ -950,7 +927,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if(blockTuples.length>0) {
 			BlockTuple maybeHat = blockTuples[0];
 			String opcode = maybeHat.getOpcode();
-			Opcode opcodeImplementation = opcodeRegistry.getOpcode(opcode);
+			Opcode opcodeImplementation = featureSet.getOpcode(opcode);
 			if((opcodeImplementation != null)&&(opcodeImplementation instanceof OpcodeHat)) {
 				java.util.List<Object> arguments = maybeHat.getArguments();
 				Object[] executableArguments = new Object[arguments.size()];

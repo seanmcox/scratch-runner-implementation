@@ -15,15 +15,7 @@ public class Activator implements BundleActivator {
 	/**
 	 * A source for registered Opcodes.
 	 */
-	private static OpcodeTracker OPCODE_TRACKER;
-	/**
-	 * A source for registered GraphicEffects
-	 */
-	private static GraphicEffectTracker GRAPHIC_EFFECT_TRACKER;
-	/**
-	 * A source for registered GraphicEffects
-	 */
-	private static StageMonitorCommandTracker STAGE_MONITOR_COMMAND_TRACKER;
+	private static FeatureSetGeneratorTracker FEATURE_SET_GENERATOR_TRACKER;
 	
     /**
      * Implements BundleActivator.start(). Prints
@@ -34,9 +26,7 @@ public class Activator implements BundleActivator {
     @Override
 	public void start(BundleContext context){
 		System.out.println(this.getClass().getCanonicalName()+": Starting.");
-		OPCODE_TRACKER = new OpcodeTracker(context);
-		GRAPHIC_EFFECT_TRACKER = new GraphicEffectTracker(context);
-		STAGE_MONITOR_COMMAND_TRACKER = new StageMonitorCommandTracker(context);
+		FEATURE_SET_GENERATOR_TRACKER = new FeatureSetGeneratorTracker(context);
 		runtimeRegistration=context.registerService(com.shtick.utils.scratch.runner.core.ScratchRuntimeFactory.class.getName(), new ScratchRuntimeFactoryImplementation(),new Hashtable<String, String>());
     }
 
@@ -49,12 +39,8 @@ public class Activator implements BundleActivator {
     @Override
 	public void stop(BundleContext context){
 		System.out.println(this.getClass().getCanonicalName()+": Stopping.");
-		context.removeServiceListener(OPCODE_TRACKER);
-		OPCODE_TRACKER = null;
-		context.removeServiceListener(GRAPHIC_EFFECT_TRACKER);
-		GRAPHIC_EFFECT_TRACKER = null;
-		context.removeServiceListener(STAGE_MONITOR_COMMAND_TRACKER);
-		STAGE_MONITOR_COMMAND_TRACKER = null;
+		context.removeServiceListener(FEATURE_SET_GENERATOR_TRACKER);
+		FEATURE_SET_GENERATOR_TRACKER = null;
 		if(runtimeRegistration!=null)
 			runtimeRegistration.unregister();
     }

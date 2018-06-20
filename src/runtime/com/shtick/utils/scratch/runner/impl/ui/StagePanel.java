@@ -17,8 +17,8 @@ import java.util.Map;
 
 import javax.swing.JPanel;
 
+import com.shtick.utils.scratch.runner.core.FeatureSet;
 import com.shtick.utils.scratch.runner.core.GraphicEffect;
-import com.shtick.utils.scratch.runner.core.GraphicEffectRegistry;
 import com.shtick.utils.scratch.runner.core.elements.List;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
 import com.shtick.utils.scratch.runner.core.elements.Sprite;
@@ -155,9 +155,9 @@ public class StagePanel extends JPanel {
 					if(effects.size()>0) {
 						img =  new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
 						img.getGraphics().drawImage(imageAndArea.image, 0, 0, null);
-						GraphicEffectRegistry registry = runtime.getGraphicEffectRegistry();
+						FeatureSet featureSet = runtime.getFeatureSet();
 						for(String name:effects.keySet()) {
-							GraphicEffect effect = registry.getGraphicEffect(name);
+							GraphicEffect effect = featureSet.getGraphicEffect(name);
 							if(effect==null) {
 								System.err.println("WARNING: Effect not found: "+name);
 								continue;

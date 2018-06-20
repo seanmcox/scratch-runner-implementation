@@ -16,8 +16,6 @@ import java.awt.geom.RoundRectangle2D;
 
 import javax.swing.JComponent;
 
-import com.shtick.utils.scratch.runner.core.ScratchRuntime;
-import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.StageMonitorCommand;
 import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
@@ -62,7 +60,7 @@ public class MonitorValueComponent extends JComponent{
 		setDoubleBuffered(false);
 
 		setPreferredSize(new Dimension(50,fontHeight+VERTICAL_PAD*2));
-		StageMonitorCommand monitorCommand = runtime.getStageMonitorCommandRegistry().getStageMonitorCommand(command);
+		StageMonitorCommand monitorCommand = runtime.getFeatureSet().getStageMonitorCommand(command);
 		if(monitorCommand==null) {
 			System.err.println("Error: StageMonitorCommand not found: "+command);
 			return;
@@ -75,18 +73,8 @@ public class MonitorValueComponent extends JComponent{
 			}
 			
 			@Override
-			public ScriptTupleRunner getScriptRunner() {
-				return null;
-			}
-			
-			@Override
 			public ScriptContext getScriptContext() {
 				return context;
-			}
-			
-			@Override
-			public ScratchRuntime getRuntime() {
-				return runtime;
 			}
 			
 			@Override
@@ -110,7 +98,7 @@ public class MonitorValueComponent extends JComponent{
 		g2.draw(panelShape);
 		
 		g2.setFont(font);
-		StageMonitorCommand commandImpl = runtime.getStageMonitorCommandRegistry().getStageMonitorCommand(command);
+		StageMonitorCommand commandImpl = runtime.getFeatureSet().getStageMonitorCommand(command);
 		String text;
 		if(commandImpl==null)
 			text = "Err";

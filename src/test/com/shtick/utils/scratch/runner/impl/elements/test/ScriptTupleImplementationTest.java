@@ -13,7 +13,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Test;
 import org.osgi.framework.Bundle;
@@ -29,15 +31,17 @@ import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 
+import com.shtick.utils.scratch.runner.core.FeatureSet;
+import com.shtick.utils.scratch.runner.core.GraphicEffect;
 import com.shtick.utils.scratch.runner.core.InvalidScriptDefinitionException;
 import com.shtick.utils.scratch.runner.core.Opcode;
 import com.shtick.utils.scratch.runner.core.OpcodeAction;
 import com.shtick.utils.scratch.runner.core.OpcodeControl;
-import com.shtick.utils.scratch.runner.core.OpcodeRegistry;
 import com.shtick.utils.scratch.runner.core.OpcodeSubaction;
 import com.shtick.utils.scratch.runner.core.ScratchRuntime;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.SoundMonitor;
+import com.shtick.utils.scratch.runner.core.StageMonitorCommand;
 import com.shtick.utils.scratch.runner.core.ValueListener;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
@@ -45,7 +49,7 @@ import com.shtick.utils.scratch.runner.core.elements.control.BasicJumpBlockTuple
 import com.shtick.utils.scratch.runner.core.elements.control.ReadLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.SetLocalVarBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.TestBlockTuple;
-import com.shtick.utils.scratch.runner.impl.bundle.OpcodeTracker;
+import com.shtick.utils.scratch.runner.impl.bundle.FeatureSetGeneratorTracker;
 import com.shtick.utils.scratch.runner.impl.elements.BlockTupleImplementation;
 import com.shtick.utils.scratch.runner.impl.elements.ScriptTupleImplementation;
 import com.shtick.utils.scratch.runner.standard.blocks.util.DummyScratchRuntimeImplementation;
@@ -55,7 +59,7 @@ import com.shtick.utils.scratch.runner.standard.blocks.util.DummyScratchRuntimeI
  *
  */
 public class ScriptTupleImplementationTest {
-	private static final OpcodeRegistry OPCODE_REGISTRY= new OpcodeRegistry();
+	private static final OpcodeFeatureSet OPCODE_REGISTRY=new OpcodeFeatureSet();
 	private static final DummyScratchRuntimeImplementation RUNTIME;
 	static {
 		OPCODE_REGISTRY.registerOpcode(new NopOpcode("1"));
@@ -71,7 +75,7 @@ public class ScriptTupleImplementationTest {
 		OPCODE_REGISTRY.registerOpcode(new PointlessLocalOpcode());
 		OPCODE_REGISTRY.registerOpcode(new NestedPointlessLocalOpcode());
 		try {
-			RUNTIME = new DummyScratchRuntimeImplementation(480,360,OPCODE_REGISTRY,null,null);
+			RUNTIME = new DummyScratchRuntimeImplementation(480,360,OPCODE_REGISTRY);
 		}
 		catch(IOException t) {
 			throw new RuntimeException(t);
@@ -612,7 +616,63 @@ public class ScriptTupleImplementationTest {
 		}
 	}
 	
-	private static class DumbyOpcodeTracker extends OpcodeTracker{
+	private static class OpcodeFeatureSet implements FeatureSet{
+		private HashMap<String,Opcode> opcodes = new HashMap<>();
+		
+		public void registerOpcode(Opcode opcode) {
+			opcodes.put(opcode.getOpcode(), opcode);
+		}
+
+		/* (non-Javadoc)
+		 * @see com.shtick.utils.scratch.runner.core.FeatureSet#getOpcode(java.lang.String)
+		 */
+		@Override
+		public Opcode getOpcode(String opcode) {
+			return opcodes.get(opcode);
+		}
+
+		/* (non-Javadoc)
+		 * @see com.shtick.utils.scratch.runner.core.FeatureSet#getOpcodes()
+		 */
+		@Override
+		public Set<Opcode> getOpcodes() {
+			return new HashSet<>(opcodes.values());
+		}
+
+		/* (non-Javadoc)
+		 * @see com.shtick.utils.scratch.runner.core.FeatureSet#getGraphicEffect(java.lang.String)
+		 */
+		@Override
+		public GraphicEffect getGraphicEffect(String id) {
+			return null;
+		}
+
+		/* (non-Javadoc)
+		 * @see com.shtick.utils.scratch.runner.core.FeatureSet#getGraphicEffects()
+		 */
+		@Override
+		public Set<GraphicEffect> getGraphicEffects() {
+			return null;
+		}
+
+		/* (non-Javadoc)
+		 * @see com.shtick.utils.scratch.runner.core.FeatureSet#getStageMonitorCommand(java.lang.String)
+		 */
+		@Override
+		public StageMonitorCommand getStageMonitorCommand(String id) {
+			return null;
+		}
+
+		/* (non-Javadoc)
+		 * @see com.shtick.utils.scratch.runner.core.FeatureSet#getStageMonitorCommands()
+		 */
+		@Override
+		public Set<StageMonitorCommand> getStageMonitorCommands() {
+			return null;
+		}
+	}
+	
+	private static class DumbyOpcodeTracker extends FeatureSetGeneratorTracker{
 		private static HashMap<String,Opcode> opcodes = new HashMap<>(10);
 
 		public DumbyOpcodeTracker() {
