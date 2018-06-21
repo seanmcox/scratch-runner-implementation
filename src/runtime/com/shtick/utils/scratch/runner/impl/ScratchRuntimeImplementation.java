@@ -692,7 +692,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	    		Player player = Manager.createPlayer(ds);
 	    		retval = new JMFSoundMonitor(player);
 			}
-			catch(NoPlayerException t) {
+			catch(/*NoPlayerException|*/Throwable t) {
 		    	// Save error to report just in case of total failure.
 		    	errors.add(t);
 			}

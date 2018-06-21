@@ -50,4 +50,18 @@ public class BlockTupleImplementation implements BlockTuple{
 		}
 		return retval;
 	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		String s = (opcode == null)?"":opcode;
+		for(Object argument:arguments) {
+			if(s.length()>0)
+				s+=",";
+			s+=argument.toString();
+		}
+		return "["+s+"]";
+	}
 }

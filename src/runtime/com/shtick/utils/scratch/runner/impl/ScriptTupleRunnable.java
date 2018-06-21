@@ -16,6 +16,7 @@ import com.shtick.utils.scratch.runner.core.OpcodeValue;
 import com.shtick.utils.scratch.runner.core.ScriptTupleRunner;
 import com.shtick.utils.scratch.runner.core.elements.BlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.ScriptContext;
+import com.shtick.utils.scratch.runner.core.elements.Sprite;
 import com.shtick.utils.scratch.runner.core.elements.control.BasicJumpBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.ChangeLocalVarByBlockTuple;
 import com.shtick.utils.scratch.runner.core.elements.control.ControlBlockTuple;
@@ -158,11 +159,26 @@ public class ScriptTupleRunnable implements Runnable {
 			while((callStack.size()>0)&&(!totalStop)) {
 				YieldingScript yieldingScript = callStack.peek();
 				while((yieldingScript.index<yieldingScript.blockTuples.length)&&(!stopProcedure)) {
-					if(yieldingScript.debugFlag)
-						System.out.println("Index: "+yieldingScript.index+"/"+yieldingScript.blockTuples.length);
 					BlockTuple tuple = yieldingScript.blockTuples[yieldingScript.index];
+//					if(yieldingScript.debugFlag)
+//						if(((Sprite)yieldingScript.context.getContextObject()).getCurrentCostumeIndex() > 1)
+//							System.out.println("Index: "+yieldingScript.index+"/"+yieldingScript.blockTuples.length+" - "+tuple.getOpcode());
 					if(tuple instanceof ControlBlockTuple) {
 						if(tuple instanceof TestBlockTuple) {
+							if(yieldingScript.debugFlag) {
+//								if(((Sprite)yieldingScript.context.getContextObject()).getCurrentCostumeIndex() > 1) {
+//									System.out.println(tuple.getArguments().get(0).toString());
+//									System.out.println("c = "+yieldingScript.context.getContextVariableValueByName("c"));
+//									System.out.println("mousePressed = "+runtime.isMouseDown());
+//									System.out.println("mouseX = "+runtime.getMouseStagePosition().getX());
+//									System.out.println("mouseY = "+runtime.getMouseStagePosition().getY());
+//									System.out.println("xPos = "+((Sprite)yieldingScript.context.getContextObject()).getScratchX());
+//									System.out.println("yPos = "+((Sprite)yieldingScript.context.getContextObject()).getScratchY());
+//									System.out.println("StuckIn = "+yieldingScript.context.getContextVariableValueByName("StuckIn"));
+//									System.out.println("obj name = "+yieldingScript.context.getObjName());
+//									System.out.println("costume index = "+((Sprite)yieldingScript.context.getContextObject()).getCurrentCostumeIndex());
+//								}
+							}
 							testResult = (Boolean)getValue(yieldingScript.context,tuple.getArguments().get(0),yieldingScript.localVariables);
 							yieldingScript.index++;
 							continue;
@@ -265,8 +281,10 @@ public class ScriptTupleRunnable implements Runnable {
 						}
 					}
 					if(yieldingScript.debugFlag) {
-						String description = currentOpcode.getOpcode()+" "+Arrays.toString((Object[])executableArguments);
-						System.out.println("</>"+description);
+//						if(((Sprite)yieldingScript.context.getContextObject()).getCurrentCostumeIndex() > 1) {
+//							String description = currentOpcode.getOpcode()+" "+Arrays.toString((Object[])executableArguments);
+//							System.out.println("</>"+description);
+//						}
 					}
 					OpcodeSubaction subaction = ((OpcodeAction)opcodeImplementation).execute(runtime, scriptRunner, yieldingScript.context, executableArguments);
 					yieldingScript.index++;
@@ -281,8 +299,12 @@ public class ScriptTupleRunnable implements Runnable {
 						case SUBSCRIPT:
 							String description = currentOpcode.getOpcode()+" "+executableArguments[0]+((executableArguments.length>1)?(" "+Arrays.toString((Object[])executableArguments[1])):"");
 							synchronized(callStack){
-								if(!stopProcedure)
+								if(!stopProcedure) {
 									callStack.push(new YieldingScript(subaction.getSubscript().getContext(), ((ScriptTupleImplementation)subaction.getSubscript()).getResolvedBlockTuples(), ((ScriptTupleImplementation)subaction.getSubscript()).getLocalVariableCount(), subaction.isSubscriptAtomic(), description));
+									if("Update Inv Blocks".equals(executableArguments[0])) {
+										callStack.peek().debugFlag = true;
+									}
+								}
 							}
 							if(!yieldingScript.isAtomic) {
 								return;
