@@ -1,6 +1,7 @@
 /bin/**
 /testBin/**
 **/.DS_Store
-/dist/install/scratchrunner.runtime.jar
+/dist/install/scratchrunner.*.jar
+/dist/install/image_viewer.jar
 /bin/
 /testBin/

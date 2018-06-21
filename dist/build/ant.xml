@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project default="jar" name="Scratch Runner: Implementation">
-    <property name="dir.buildfile" value="."/>
+	<tstamp>
+	     <format property="version" pattern="yyyy.MM.dd"/>
+	</tstamp>
+
+	<property name="file.jar" value="scratchrunner.runtime.${version}.jar"/>
+	<property name="dir.buildfile" value="."/>
     <property name="dir.workspace" value="${dir.buildfile}/../../.."/>
     <property name="dir.project" value="${dir.buildfile}/../.."/>
-    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
-    <!--ANT 1.7 is required                                        -->
-    <target name="jar">
-        <jar destfile="../install/scratchrunner.runtime.jar">
+	
+    <target name="jar" description="Compiles to an OSGI-bundle jar.">
+		<delete>
+			<fileset dir="../install" includes="scratchrunner.runtime.*.jar"/>
+		</delete>
+        <jar destfile="../install/${file.jar}">
             <manifest>
                 <attribute name="Bundle-Name" value="Scratch Runner: Implementation"/>
                 <attribute name="Bundle-Description" value="A bundle that registers an implementation of the Scratch Runner Runtime."/>
@@ -39,12 +46,14 @@
 
             <zipfileset excludes="META-INF/*.SF" src="${dir.project}/lib/batik-1.9-bin/lib/xalan-2.7.2.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${dir.project}/lib/batik-1.9-bin/lib/serializer-2.7.2.jar"/>
-
         </jar>
     </target>
 
-	<target name="jar_and_bundle" depends="jar">
-		<copy file="../install/scratchrunner.runtime.jar" todir="${dir.workspace}/scratch-runner-main/dist/install/plain/bundle"/>
+	<target name="jar_and_bundle" depends="jar" description="Compiles to an OSGI-bundle jar and pushes the update to the main project.">
+		<delete>
+			<fileset dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles" includes="scratchrunner.runtime.*.jar"/>
+		</delete>
+		<copy file="../install/${file.jar}" todir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles"/>
 	</target>
 
     <target name="image_viewer_build_and_run">
