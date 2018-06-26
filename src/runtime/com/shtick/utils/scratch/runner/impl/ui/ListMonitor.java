@@ -12,6 +12,11 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.Stroke;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -38,6 +43,7 @@ public class ListMonitor extends MonitorComponent{
 	private static final Color COLOR_HIGHLIGHT_BACKGROUND = new Color(181, 213, 255);
 	private static final Color COLOR_SCROLLBAR = new Color(106, 108, 111);
 	private static final Color COLOR_SCROLLBAR_BACKGROUND = new Color(199, 202, 204);
+	private static final int LINE_DATA_ITEM_HORIZONTAL_PADDING = 5;
 	private static final Pattern LTRIM = Pattern.compile("^\\s+");
 	private static final Pattern RTRIM = Pattern.compile("\\s+$");
 	private static final Pattern WORDWRAP_ADJUST = Pattern.compile("^(.*[\\s-]+)[^\\s-]+$");
@@ -50,6 +56,11 @@ public class ListMonitor extends MonitorComponent{
 	private int scrollRectangleBaseY=-1;
 	private int rectangleReferenceY=0;
 	private int mouseReferenceY=0;
+	/**
+	 * The number of items the current scroll bar representation was meant to scroll through.
+	 * 
+	 * TODO Adjust the scroll bar when the number of items changes.
+	 */
 	private int scrollRectForItemCount = -1;
 	
 	private ItemDetails selectedItem = null;
@@ -65,6 +76,7 @@ public class ListMonitor extends MonitorComponent{
 	public ListMonitor(List list, ScriptContext context) {
 		super(list);
 		this.context = context;
+		this.setFocusable(true);
 		setLayout(null);
 		setBounds(list.getX().intValue(),list.getY().intValue(), list.getWidth().intValue(), list.getHeight().intValue());
 		
@@ -80,9 +92,9 @@ public class ListMonitor extends MonitorComponent{
 			
 			@Override
 			public void mousePressed(MouseEvent e) {
+				grabFocus();
 				Point dataPoint = e.getPoint();
 				dataPoint.y-=lineHeight;
-				System.out.println(dataPoint);
 				if(scrollBarRectangle.contains(dataPoint)) {
 					setScrollHandlePositionByDataPoint(dataPoint);
 					mouseReferenceY = dataPoint.y;
@@ -90,10 +102,18 @@ public class ListMonitor extends MonitorComponent{
 				else {
 					mouseReferenceY = -1;
 				}
-				int oldIndex = (selectedItem!=null)?selectedItem.index:-1;
-				identifySelectedItem(dataPoint);
-				if(((selectedItem!=null)?selectedItem.index:-1)!=oldIndex)
-					repaint();
+				synchronized(visibleItemDetails) {
+					int oldIndex = (selectedItem!=null)?selectedItem.index:-1;
+					identifySelectedItem(dataPoint);
+					if(selectedItem!=null) {
+						selectedTextI = identifyItemTextIndexByPoint(selectedItem, dataPoint);
+						selectedTextLength = 0;
+					}
+					else {
+						selectedTextI = -1;
+					}
+				}
+				repaint();
 			}
 			
 			@Override
@@ -104,11 +124,21 @@ public class ListMonitor extends MonitorComponent{
 			
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				System.out.println("mouseClicked");
 				if(e.getClickCount() == 2) {
 					synchronized(visibleItemDetails) {
 						if(selectedItem!=null) {
-							selectedTextI = 0;
-							selectedTextLength = selectedItem.fulltext.length();
+							Point dataPoint = e.getPoint();
+							dataPoint.y-=lineHeight;
+							int cursorI = identifyItemTextIndexByPoint(selectedItem, dataPoint);
+							int startI;
+							int stopI;
+							for(startI = cursorI;(startI>0)&&!Character.isWhitespace(selectedItem.fulltext.charAt(startI-1));startI--);
+							for(stopI = cursorI;(stopI<selectedItem.fulltext.length())&&!Character.isWhitespace(selectedItem.fulltext.charAt(stopI));stopI++);
+							
+							selectedTextI = startI;
+							selectedTextLength = stopI-startI;
+							repaint();
 						}
 					}
 				}
@@ -121,10 +151,55 @@ public class ListMonitor extends MonitorComponent{
 			
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				if(mouseReferenceY>0) {
+				if(mouseReferenceY>=0) {
 					Point dataPoint = e.getPoint();
 					dataPoint.y-=lineHeight;
 					setScrollHandlePositionByDataPoint(dataPoint);
+				}
+				else if(selectedTextI>=0) {
+					Point dataPoint = e.getPoint();
+					dataPoint.y-=lineHeight;
+					synchronized(visibleItemDetails) {
+						int otherIndex = identifyItemTextIndexByPoint(selectedItem, dataPoint);
+						selectedTextLength = otherIndex - selectedTextI;
+					}
+					repaint();
+				}
+			}
+		});
+		
+		this.addKeyListener(new KeyListener() {
+			
+			@Override
+			public void keyTyped(KeyEvent e) {}
+			
+			@Override
+			public void keyReleased(KeyEvent e) {}
+			
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if(0<(e.getModifiersEx()&Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx())) {
+					if(e.getKeyCode()==KeyEvent.VK_C) {
+						synchronized(visibleItemDetails) {
+							if(selectedTextI>=0) {
+								// TODO Copy the current selection, if any
+								int iStart;
+								int iFinish;
+								if(selectedTextLength>0) {
+									iStart = selectedTextI;
+									iFinish = selectedTextI + selectedTextLength;
+								}
+								else {
+									iStart = selectedTextI + selectedTextLength;
+									iFinish = selectedTextI;
+								}
+								String selectedText = selectedItem.fulltext.substring(iStart, iFinish);
+								StringSelection stringSelection = new StringSelection(selectedText);
+								Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+								clipboard.setContents(stringSelection, null);
+							}
+						}
+					}
 				}
 			}
 		});
@@ -149,6 +224,66 @@ public class ListMonitor extends MonitorComponent{
 			}
 			selectedItem = null;
 		}
+	}
+	
+	private int identifyItemTextIndexByPoint(ItemDetails itemDetails, Point p) {
+		Rectangle rect = itemDetails.shape.getBounds();
+		
+		// Find line.
+		if(p.y<(rect.y+4))
+			return 0;
+		int lineI = (p.y - (rect.y+4))/lineHeight;
+		if(lineI>=itemDetails.lines.length)
+			return itemDetails.fulltext.length();
+		
+		// Find index in line
+		int x = p.x - (rect.x+LINE_DATA_ITEM_HORIZONTAL_PADDING);
+		if(x<=0)
+			return itemDetails.lineIndexes[lineI];
+		String line = itemDetails.lines[lineI];
+		int lineWidth = getFontMetricsNormal().stringWidth(line);
+		if(x>=lineWidth)
+			return itemDetails.lineIndexes[lineI]+line.length();
+		int estimatedDi = x*line.length()/lineWidth;
+		String substring = line.substring(0, estimatedDi);
+		lineWidth = getFontMetricsNormal().stringWidth(substring);
+		int ih, il;
+		int widthH, widthL;
+		if(lineWidth>x) {
+			ih = estimatedDi;
+			il = estimatedDi-1;
+			if(il<0)
+				return itemDetails.lineIndexes[lineI];
+			widthH = lineWidth;
+			widthL = getFontMetricsNormal().stringWidth(line.substring(0, il));
+			while(widthL>x) {
+				ih--;
+				il--;
+				if(il<0)
+					return itemDetails.lineIndexes[lineI];
+				widthH = widthL;
+				widthL = getFontMetricsNormal().stringWidth(line.substring(0, il));
+			}
+		}
+		else {
+			ih = estimatedDi+1;
+			il = estimatedDi;
+			if(ih>=line.length())
+				return itemDetails.lineIndexes[lineI]+line.length();
+			widthH = getFontMetricsNormal().stringWidth(line.substring(0, ih));
+			widthL = lineWidth;
+			while(widthH<x) {
+				ih++;
+				il++;
+				if(ih>=line.length())
+					return itemDetails.lineIndexes[lineI]+line.length();
+				widthL = widthH;
+				widthH = getFontMetricsNormal().stringWidth(line.substring(0, ih));
+			}
+		}
+		if((x-widthL)<(widthH-x))
+			return itemDetails.lineIndexes[lineI]+il;
+		return itemDetails.lineIndexes[lineI]+ih;
 	}
 	
 	/* (non-Javadoc)
@@ -225,9 +360,9 @@ public class ListMonitor extends MonitorComponent{
 			for(int i=i0;(currentY<clipHeight)&&(i<values.length);i++) {
 				text = ""+values[i];
 				
-				itemPanelShape = new RoundRectangle2D.Float(baseWidth+10, currentY+4, dataWidth, lineHeight+3, 5, 5);
+				itemPanelShape = new RoundRectangle2D.Float(baseWidth+LINE_DATA_ITEM_HORIZONTAL_PADDING*2, currentY+4, dataWidth, lineHeight+3, 5, 5);
 				itemDetails = new ItemDetails(i, itemPanelShape, text, new int[] {0}, new String[] {text});
-				createTextLines(itemDetails, dataWidth-10, getFontMetricsNormal());
+				createTextLines(itemDetails, dataWidth-LINE_DATA_ITEM_HORIZONTAL_PADDING*2, getFontMetricsNormal());
 				((RoundRectangle2D.Float)itemPanelShape).height = lineHeight*itemDetails.lines.length+3;
 				visibleItemDetails.add(itemDetails);
 				if((selectedItem!=null)&&(selectedItem.index == i))
@@ -239,10 +374,42 @@ public class ListMonitor extends MonitorComponent{
 				startY = currentY;
 				
 				g2.setFont(FONT_NORMAL);
-				g2.setColor(Color.WHITE);
-				for(String line:itemDetails.lines) {
+				if((selectedItem!=null)&&(selectedItem.index == i))
+					g2.setColor(Color.BLACK);
+				else
+					g2.setColor(Color.WHITE);
+				for(int j = 0;j<itemDetails.lines.length;j++) {
+					String line = itemDetails.lines[j];
+					if((selectedItem!=null)&&(selectedItem.index==i)&&(selectedTextI>=0)&&(selectedTextLength!=0)) {
+						int iStart;
+						int iFinish;
+						if(selectedTextLength>0) {
+							iStart = selectedTextI;
+							iFinish = selectedTextI + selectedTextLength;
+						}
+						else {
+							iStart = selectedTextI + selectedTextLength;
+							iFinish = selectedTextI;
+						}
+						iStart-=itemDetails.lineIndexes[j];
+						iFinish-=itemDetails.lineIndexes[j];
+						if(!((iFinish<0)||(iStart>=line.length()))) {
+							// Convert from index to pixels
+							if(iStart<0)
+								iStart = 0;
+							else
+								iStart = getFontMetricsNormal().stringWidth(line.substring(0, iStart));
+							if(iFinish>=line.length())
+								iFinish = getFontMetricsNormal().stringWidth(line);
+							else
+								iFinish = getFontMetricsNormal().stringWidth(line.substring(0, iFinish));
+							g2.setColor(COLOR_HIGHLIGHT_BACKGROUND);
+							g2.fillRect(baseWidth+LINE_DATA_ITEM_HORIZONTAL_PADDING*3+iStart, currentY+getFontMetricsNormal().getDescent()+getFontMetricsNormal().getLeading()/2+2, iFinish-iStart, lineHeight);
+							g2.setColor(Color.BLACK);
+						}
+					}
 					currentY += lineHeight;
-					g2.drawString(line, baseWidth+15, currentY);
+					g2.drawString(line, baseWidth+LINE_DATA_ITEM_HORIZONTAL_PADDING*3, currentY);
 				}
 				Stroke oldStroke = g2.getStroke();
 				g2.setStroke(ITEM_PANEL_STROKE);
@@ -251,7 +418,7 @@ public class ListMonitor extends MonitorComponent{
 				
 				g2.setFont(FONT_MINOR);
 				g2.setColor(Color.BLACK);
-				g2.drawString(""+(i+1), 5+baseWidth-fontMetricsMinor.stringWidth(""+(i+1)), (startY+currentY+lineHeight)/2);
+				g2.drawString(""+(i+1), LINE_DATA_ITEM_HORIZONTAL_PADDING+baseWidth-fontMetricsMinor.stringWidth(""+(i+1)), (startY+currentY+lineHeight)/2);
 
 				currentY+=3;
 			}

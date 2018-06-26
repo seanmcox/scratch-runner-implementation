@@ -752,7 +752,6 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	public void addComponent(Component component, int x, int y, int width, int height) {
 		Runnable runnable = ()->{
 			stagePanel.addComponent(component, x, y, width, height);
-			repaintStage();			
 		};
 		if(SwingUtilities.isEventDispatchThread()) {
 			runnable.run();
@@ -765,6 +764,7 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 				t.printStackTrace();
 			}
 		}
+		repaintStage();			
 	}
 
 	/* (non-Javadoc)
