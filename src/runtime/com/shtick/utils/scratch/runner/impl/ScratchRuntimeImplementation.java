@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import javax.media.Manager;
-import javax.media.NoPlayerException;
 import javax.media.Player;
 import javax.media.Time;
 import javax.media.protocol.DataSource;
@@ -392,7 +391,8 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 		if((sprite==null)||(image==null))
 			bubbleImage=null;
 		else
-		bubbleImage = new BubbleImage(sprite, image);
+			bubbleImage = new BubbleImage(sprite, image);
+		repaintStage();
 	}
 	
 	/**
@@ -750,8 +750,21 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 */
 	@Override
 	public void addComponent(Component component, int x, int y, int width, int height) {
-		stagePanel.addComponent(component, x, y, width, height);
-		repaintStage();
+		Runnable runnable = ()->{
+			stagePanel.addComponent(component, x, y, width, height);
+			repaintStage();			
+		};
+		if(SwingUtilities.isEventDispatchThread()) {
+			runnable.run();
+		}
+		else {
+			try {
+				SwingUtilities.invokeAndWait(runnable);
+			}
+			catch(InvocationTargetException|InterruptedException t) {
+				t.printStackTrace();
+			}
+		}
 	}
 
 	/* (non-Javadoc)
@@ -759,8 +772,21 @@ public class ScratchRuntimeImplementation implements ScratchRuntime {
 	 */
 	@Override
 	public void removeComponent(Component component) {
-		stagePanel.removeComponent(component);
-		repaintStage();
+		Runnable runnable = ()->{
+			stagePanel.removeComponent(component);
+			repaintStage();
+		};
+		if(SwingUtilities.isEventDispatchThread()) {
+			runnable.run();
+		}
+		else {
+			try {
+				SwingUtilities.invokeAndWait(runnable);
+			}
+			catch(InvocationTargetException|InterruptedException t) {
+				t.printStackTrace();
+			}
+		}
 	}
 	
 	/**

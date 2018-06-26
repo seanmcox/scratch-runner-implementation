@@ -114,6 +114,13 @@ public class ScriptTupleThread {
 		}
 	}
 	
+	/**
+	 * @return the currentlyRunning
+	 */
+	public ScriptTupleRunnable getCurrentlyRunning() {
+		return currentlyRunning;
+	}
+
 	private class MainProcess implements Runnable{
 
 		/* (non-Javadoc)

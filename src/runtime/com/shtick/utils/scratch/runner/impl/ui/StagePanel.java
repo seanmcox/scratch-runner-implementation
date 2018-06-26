@@ -251,6 +251,8 @@ public class StagePanel extends JPanel {
 	 * ie. centered on the middle, with x increasing to the right and y increasing to the bottom.
 	 * The width and the height units are stage units.
 	 * 
+	 * Should be called from the Swing event handling thread
+	 * 
 	 * @param component
 	 * @param x
 	 * @param y
@@ -276,6 +278,8 @@ public class StagePanel extends JPanel {
 	
 	/**
 	 * Removes the given component from the stage.
+	 * 
+	 * Should be called from the Swing event handling thread
 	 * 
 	 * @param component
 	 */
