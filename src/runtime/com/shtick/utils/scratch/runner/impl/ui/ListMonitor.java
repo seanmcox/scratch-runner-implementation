@@ -178,7 +178,7 @@ public class ListMonitor extends MonitorComponent{
 			
 			@Override
 			public void keyPressed(KeyEvent e) {
-				if(0<(e.getModifiersEx()&Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx())) {
+				if(0<(e.getModifiers()&Toolkit.getDefaultToolkit().getMenuShortcutKeyMask())) {
 					if(e.getKeyCode()==KeyEvent.VK_C) {
 						synchronized(visibleItemDetails) {
 							if(selectedTextI>=0) {
