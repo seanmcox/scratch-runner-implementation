@@ -915,7 +915,7 @@ public class SpriteImplementation implements Sprite{
 		}
 		if(variableValuesByName.containsKey(name))
 			return variableValuesByName.get(name);
-		throw new IllegalArgumentException();
+		throw new IllegalArgumentException("Unrecognized context property value: "+name);
 	}
 	
 	/* (non-Javadoc)
