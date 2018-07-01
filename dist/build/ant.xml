@@ -50,6 +50,7 @@
     </target>
 
 	<target name="jar_and_bundle" depends="jar" description="Compiles to an OSGI-bundle jar and pushes the update to the main project.">
+		<mkdir dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles"/>
 		<delete>
 			<fileset dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles" includes="scratchrunner.runtime.*.jar"/>
 		</delete>
