@@ -5,6 +5,7 @@
 	</tstamp>
 
 	<property name="file.jar" value="scratchrunner.runtime.${version}.jar"/>
+	<property name="file.src" value="scratchrunner.runtime.${version}.src.zip"/>
 	<property name="dir.buildfile" value="."/>
     <property name="dir.workspace" value="${dir.buildfile}/../../.."/>
     <property name="dir.project" value="${dir.buildfile}/../.."/>
@@ -53,8 +54,17 @@
 		<mkdir dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles"/>
 		<delete>
 			<fileset dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles" includes="scratchrunner.runtime.*.jar"/>
+			<fileset dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles" includes="scratchrunner.runtime.*.zip"/>
+			<fileset dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles" includes="LICENSE.JMF.*"/>
+			<fileset dir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles" includes="LICENSE.BATIK.*"/>
 		</delete>
 		<copy file="../install/${file.jar}" todir="${dir.workspace}/scratch-runner-main/dist/osgi_bundles"/>
+        <zip destfile="${dir.workspace}/scratch-runner-main/dist/osgi_bundles/${file.src}">
+            <fileset dir="../../src/runtime"/>
+            <fileset dir="../../src/osgi"/>
+        </zip>
+		<copy file="${dir.project}/lib/JMF-2.1.1e/doc/readme.html" tofile="${dir.workspace}/scratch-runner-main/dist/osgi_bundles/LICENSE.JMF.html"/>
+		<copy file="${dir.project}/lib/batik-1.9-bin/README" tofile="${dir.workspace}/scratch-runner-main/dist/osgi_bundles/LICENSE.BATIK.txt"/>
 	</target>
 
     <target name="image_viewer_build_and_run">
