@@ -11,8 +11,8 @@ import com.shtick.utils.scratch.runner.core.FeatureLibrary;
 import com.shtick.utils.scratch.runner.core.FeatureSet;
 import com.shtick.utils.scratch.runner.core.FeatureSetGenerator;
 import com.shtick.utils.scratch.runner.core.elements.RenderableChild;
-import com.shtick.utils.scratch.runner.impl.AmalgamatedFeatureSet;
-import com.shtick.utils.scratch.runner.impl.ScratchRuntimeImplementation;
+import com.shtick.utils.scratch.runner.impl2.AmalgamatedFeatureSet;
+import com.shtick.utils.scratch.runner.impl2.ScratchRuntimeImplementation;
 
 /**
  * @author scox
