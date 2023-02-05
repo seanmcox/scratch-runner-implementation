@@ -20,6 +20,16 @@ import com.shtick.utils.scratch.runner.core.ScratchRuntimeFactory;
 public class ScratchRuntimeFactoryImplementation implements ScratchRuntimeFactory {
 
 	/* (non-Javadoc)
+	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntimeFactory#isValidFilename(java.lang.String)
+	 */
+	@Override
+	public boolean isValidFilename(String filename) {
+		if(filename == null)
+			return false;
+		return filename.matches(".*\\.sb2");
+	}
+
+	/* (non-Javadoc)
 	 * @see com.shtick.utils.scratch.runner.core.ScratchRuntimeFactory#createScratchRuntime(java.io.File)
 	 */
 	@Override
