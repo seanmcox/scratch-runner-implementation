@@ -6,7 +6,7 @@ import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 
-import com.shtick.utils.scratch.runner.impl2.ScratchRuntimeFactoryImplementation;
+import com.shtick.utils.scratch.runner.impl.ScratchRuntimeFactoryImplementation;
 
 /**
  **/
